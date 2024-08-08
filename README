@@ -1,0 +1,2 @@
+Esse projeto tem como core a reestruturação de um serviço já existente, focando na centralização do banco de dados e adição de novas features.
+No que dita a centralização será usada uma API em nodejs que recebe as requisições do cliente (python), através de métodos HTTP. Receberemos essas requisões no servidor conectada pela API em nodejs. Fazendo então a busca baseada na requisição do cliente no banco de dados.
