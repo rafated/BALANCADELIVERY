@@ -10,7 +10,7 @@ A solução foi criada com o obejetivo de verificar a exatidão na montagem de p
 
 ## 1.2 Estrutura e Linguagens: 
 
-### O projeto está estruturado em trés processos:
+### O projeto está estruturado em três processos:
 
 #### 1.2.1 Save_data_printer: 
 Esse processo abre uma porta Serial para interceptar o sinal enviado do OT para a impressora. Recebido esse sinal o mesmo é filtrado excluindo espaços nulos e buscando uma sequência de caracteres específica, presente no conjunto de dados que é preciso durante o workflow. Cada conjunto de dados é guardado em uma pasta de ficheiros temporários sendo o seu nome a concatenação do counter e uma string com o datetime atual da criação do arquivo.
