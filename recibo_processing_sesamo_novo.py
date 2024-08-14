@@ -59,8 +59,8 @@ def file_processing(file_name, lines):
     with open(file_path, "r") as file:
         for line in file: 
             line = line.upper()
-            line = line.replace(r"\\X1BD","").replace(r"\\X1DVB","").replace(r"\\N'","").replace(r'\\N"',"").replace(r"\\X1BE","").replace(r"\\X00","").replace(r"\\X1BA","").replace(r"\\X1D!D","").replace(r"\\X1DB","").replace(r"\\X1DBD","").replace(r"\\X1D!","")
-            line = line.replace("B'","").replace('B"',"").replace('"',"").replace(r"\\X01","").replace(r"\\X11","").replace(r"\\R\\X1DL","").strip()
+            line = line.replace("\\X1BD","").replace("\\X1DVB","").replace("\\N'","").replace('\\N"',"").replace("\\X1BE","").replace("\\X00","").replace("\\X1BA","").replace("\\X1D!D","").replace("\\X1DB","").replace("\\X1DBD","").replace("\\X1D!","")
+            line = line.replace("B'","").replace('B"',"").replace('"',"").replace("\\X01","").replace("\\X11","").replace("\\R\\X1DL","").replace("\\R","").strip()
             lines.append(line) # Armazena tudo em memória
             print(line)
         return
@@ -141,7 +141,7 @@ def main():
 
                 #Procura a ultima posição da palavra IVA na farura 
                 for word in lines:
-                    if "IVA" in word:
+                    if "Pedido" in word:
                         linha_pedido = array_posicao
                         array_str_pedido.append(array_posicao)
                     array_posicao = array_posicao + 1
@@ -153,7 +153,6 @@ def main():
                 product_index = 0 #flag contador de produtos numa pick list
                 c = 0 #flag contador de extras de cada produto
                 
-                #Para todas as linhas da pick list compreendidas entre os nomes IvA
                 #Caso exista mais que uma pick_list no mesmo recibo, ignora todas exceto a primeira
                 for i in range (array_str_pedido[0],array_str_pedido[1] - 2,1): #pica linha a linha os produtos
                     ing = []
