@@ -23,14 +23,17 @@ class pick_list:
     def __repr__(self):
         return pick_list
 
- #guarda os produtos que não têm correspondencia na BD
+def get_string_time():
+    current_time = datetime.datetime.now()
+    time_string = current_time.strftime('%Y%m%d_%Hh%Mm%Ss')
+    return time_string
+
+#Guarda os produtos que não têm correspondencia na BD
 def save_erro(erro_file,erro_str):
-    # Cria a string com a data atual
-    t = datetime.datetime.now()
-    s=t.strftime('%Y/%m/%d %H:%M:%S')
+    time_string = get_string_time()
 
     file_obj = open(erro_file, 'a')
-    file_obj.write(s+'; '+erro_str+'\n')# guarda a data num ficheiro txt
+    file_obj.write(time_string + '; ' + erro_str + '\n')# guarda a data num ficheiro txt
     file_obj.close()
 
  #identifica todos os ficheiros na pasta dos recibos temporários (config.file_dir_pick_list)
@@ -79,23 +82,22 @@ def open_database_connection():
         print(RED + "Erro ao abrir a base de dados: {e}" +  RESET)
         return None, None, None
 
-def get_string_time():
-    current_time = datetime.datetime.now()
-    time_string = current_time.strftime('%Y%m%d_%Hh%Mm%Ss')
-    return time_string
-
 lines = []
 
 def main():
+#------------------------------------------SESSÃO LIGAÇÃO BANCO DE DADOS---------------------------------------------------------------
+
     #Chamada da função para conexão com o banco de dados
     con, cur, estadoinicial = open_database_connection()
     if con is not None:
         print(GREEN + "Conexão ao banco de dados bem-sucedida" + RESET)
 
+#------------------------------------------SESSÃO FILE PROCESSING---------------------------------------------------------------------  
+
     print(GREEN + "Inicializando Recibo Processing" + RESET)
     t = 1 
     while (True):
-        try:
+        try:          
             print(GREEN + "Buscando ficheiros para procesar" + RESET)
             file_name = check_temp_files()
 
@@ -105,30 +107,33 @@ def main():
                 continue   
             print(CYAN + file_name +  RESET)
 
+            
             file_processing(file_name, lines)
 
+#------------------------------------------DECLARAÇÃO DE VARIÁVIES---------------------------------------------------------------------
+            
+            #Delcaração de listas
+            array_str_pedido = []
+            PickList = []
+            #Declaração de inteiros
             array_posicao = 0
             linha_pedido = 0
-            array_str_pedido = []
             nr_pedido = 1
+            product_index = 0 #flag contador de produtos numa pick list
+            c = 0 #flag contador de extras de cada produto
+
+#------------------------------------------SESSÃO EXTRAIR CÓDIGO DELIVERY-------------------------------------------------------------    
             
-            #----------------------------------------------------------------------------
-                                            #OBSERVAÇÃO
-            #Toda informção que precisamos para fazer o cálculo da pesagem se encontra
-            #entre as palvras IVA presente na fatura (Verficiar na pasta temp_faturas)
-            #----------------------------------------------------------------------------
-        
+            #Procura na lista de linhas a linha que começa com "PEDIDO" e guarda o código do delivery
             for word in lines:
                 if "PEDIDO" in word:
                     codigo_delivery=lines[array_posicao + 1]
                     linha_pedido=array_posicao
                     array_str_pedido.append(array_posicao)
                 array_posicao=array_posicao+1
-            
             print(codigo_delivery)
-            PickList = []
-            product_index = 0 #flag contador de produtos numa pick list
-            c = 0 #flag contador de extras de cada produto
+
+#-------------------------------------------------------------------------------------------------------------------------------------    
             
             #Caso exista mais que uma pick_list no mesmo recibo, ignora todas exceto a primeira
             for i in range (array_str_pedido[0] - 1): #Pica linha a linha os produtos
@@ -170,51 +175,17 @@ def main():
                                 PickList[product_index].tipo = "Sanduiche"
                                 
                                 
-                                print(RED + 'ERROS: '+str(p) + RESET)    #mostrar quando não há correspondência
+                                print(RED + 'Erro, sem correspondência do seguinte produto no banco de dados: '+str(p) + RESET)    #mostrar quando não há correspondência
                                 save_erro(config.file_produto_desconhecido,str(p)) #Guarda o artigo no seguinte ficheiro
                         
                         product_index += 1
                         c = 0  # faz reset ao contador de extras
-#------------------------------------------SESSÃO 1---------------------------------------------------------------
+
+#------------------------------------------SESSÃO SEM/EXTRA/COM/SO---------------------------------------------------------------
+
                     else: #caso a primeira palavra não seja um número
-                        q = 1 # flag quantidade
-                        
-                        #Ignora o o caractere na hora do processamento (Esse caracrtere separa cada classe de produto dentro da Picklist)
-                        if word[0]=="-":
-                            asv=0    
-                        elif word[0]=="SEM":
-                            print(word)
-                            ing=word[:]#Copia o array word
-                            ing.pop(0) #Apaga a primeira palavra
-                            p=" ".join(ing)#Junta todas as palavras da linha
-                            if word[1].isdigit():#Caso os extras tenham quantidades (ex. Extra 2 queijo)
-                                q=int(word[1])#Guarda a quantidade de extras
-                                ing.pop(0)
-                                p=" ".join(ing)
-                            
-                            #Procura na base de dados uma correspondência (tabela ingredientes)
-                            cur.execute("SELECT * FROM ingredientes WHERE nome = :name ",{"name":p})
-                            resposta=cur.fetchall()
-
-                            if resposta:
-                                peso_extra=resposta[0][2] * q *(-1)#Peso vezes a quantidade (default q = 1)
-                            else:
-                                #Todos os extras "não conhecidos"
-                                save_erro(config.file_extra_desconhecido,p)#Guarda o extra no seguinte ficheiro
-                                print("Erro Sessão 1 - Extra não conhecido: " + str(p))
-                                peso_extra=0#Define variavel peso extra
-
-                            str_extra=" ".join(word)#Define o texto dos extras para guardar na pick list
-
-                            if c == 0:#se for o primeiro extra do produto
-                                PickList[product_index - 1].extra = [str_extra]
-                                PickList[product_index - 1].extra_peso = [peso_extra]
-                            else:       #para os restantes extras do produtos
-                                PickList[product_index - 1].extra = PickList[product_index - 1].extra + [str_extra]
-                                PickList[product_index - 1].extra_peso = PickList[product_index - 1].extra_peso + [peso_extra]                                
-                            c = c + 1 #flag contador de extras de cada pedido
-#------------------------------------------SESSÃO 2---------------------------------------------------------------                            
-                        elif word[0]=="COM":
+                        q = 1
+                        if word[0] == "COM" or word[0] == "EXTRA" or word[0] == "SO" or word[0] == "SEM":
                             print(word)
                             ing=word[:] #copia o array word
                             ing.pop(0)#apaga a primeira palavra
@@ -229,11 +200,17 @@ def main():
                             resposta = cur.fetchall()
 
                             if resposta:
-                                peso_extra = resposta[0][2] * q #peso vezes a quantidade (default q =1)
+                                if word[0] == "SEM":
+                                    peso_extra = resposta[0][2] * q * (-1)
+                                elif word[0] == "NATURA" or word[0] == "PLAIN":
+                                    PickList[product_index - 1].natura = "True"
+                                    peso_extra = 0 #peso extra é 0
+                                else:
+                                    peso_extra = resposta[0][2] * q #peso vezes a quantidade (default q =1)
                             else:
                                 #todos os extras "não conhecidos"
                                 save_erro(config.file_extra_desconhecido,p) #Guarda o extra no seguinte ficheiro)
-                                print("Erro Sessão 2 - Extra não conhecido: " + str(p))
+                                print("Erro Sessão COM/EXTRA/SO/SEM - Extra não conhecido: " + str(p))
                                 peso_extra = 0 #define variavel peso extra
 
                             str_extra=" ".join(word) #Define o texto dos extras para guardar na pick list
@@ -245,75 +222,10 @@ def main():
                                 PickList[product_index - 1].extra = PickList[product_index - 1].extra + [str_extra]
                                 PickList[product_index - 1].extra_peso = PickList[product_index - 1].extra_peso + [peso_extra]
                                 
-                            c = c + 1 #flag contador de extras de cada pedido                                
-#------------------------------------------SESSÃO 3---------------------------------------------------------------                  
-                        elif word[0] == "EXTRA":
-                            print(word)
-                            ing=word[:] #copia o array word
-                            ing.pop(0)#apaga a primeira palavra
-                            p=" ".join(ing)    #junta todas as palavras da linha
-                            if word[1].isdigit():   #caso os extras tenham quantidades (ex. Extra 2 queijo)
-                                q=int(word[1]) #guarda a quantidade de extras
-                                ing.pop(0)
-                                p=" ".join(ing)
-                      
-                            #Procura na base de dados uma correspondência (tabela ingredientes)
-                            cur.execute("SELECT * FROM ingredientes WHERE nome = :name ",{"name":p})
-                            resposta=cur.fetchall()
+                            c += 1 #flag contador de extras de cada pedido                                
 
-                            if resposta:
-                                peso_extra = resposta[0][2] * q #peso vezes a quantidade (default q =1)
-                            else:
-                                #todos os extras "não conhecidos"
-                                save_erro(config.file_extra_desconhecido,p) #Guarda o extra no seguinte ficheiro)
-                                print("Erro Sessão 3 - Extra não conhecido: " + str(p))
-                                peso_extra = 0 #define variavel peso extra
+#------------------------------------------SESSÃO NATURA---------------------------------------------------------------  
 
-                            str_extra=" ".join(word) #Define o texto dos extras para guardar na pick list
-                            
-                            if c == 0:    #se for o primeiro extra do produto
-                                PickList[product_index - 1].extra = [str_extra]
-                                PickList[product_index - 1].extra_peso = [peso_extra]
-                            else:       #para os restantes extras do produtos
-                                PickList[product_index - 1].extra = PickList[product_index - 1].extra + [str_extra]
-                                PickList[product_index - 1].extra_peso = PickList[product_index - 1].extra_peso + [peso_extra]
-                            
-                            c = c + 1 #flag contador de extras de cada pedido
-#------------------------------------------SESSÃO 4---------------------------------------------------------------  
-                        elif word[0]=="SO":
-                            print(word)
-                            PickList[product_index - 1].natura="True"
-                            ing=word[:] #copia o array word
-                            ing.pop(0)#apaga a primeira palavra
-                            p=" ".join(ing)    #junta todas as palavras da linha
-                            if word[1].isdigit():   #caso os extras tenham quantidades (ex. Extra 2 queijo)
-                                q=int(word[1]) #guarda a quantidade de extras
-                                ing.pop(0)
-                                p=" ".join(ing)
-                            
-                            # procura na base de dados uma correspondência (tabela ingredientes)
-                            cur.execute("SELECT * FROM ingredientes WHERE nome = :name ",{"name":p})
-                            resposta = cur.fetchall()
-                    
-                            if resposta:
-                                peso_extra = resposta[0][2] * q #peso vezes a quantidade (default q =1)
-                            else:
-                                #todos os extras "não conhecidos"
-                                save_erro(config.file_extra_desconhecido,p) #Guarda o extra no seguinte ficheiro)
-                                print("Erro Sessão 4 - Extra não conhecido: " + str(p))
-                                peso_extra = 0 #define variavel peso extra
-
-                            str_extra=" ".join(word) #Define o texto dos extras para guardar na pick list
-
-                            if c == 0:    #se for o primeiro extra do produto
-                                PickList[product_index-1].extra = [str_extra]
-                                PickList[product_index-1].extra_peso = [peso_extra]
-                            else:       #para os restantes extras do produtos
-                                PickList[product_index - 1].extra = PickList[product_index - 1].extra + [str_extra]
-                                PickList[product_index - 1].extra_peso = PickList[product_index - 1].extra_peso + [peso_extra]
-                        
-                            c = c + 1 #flag contador de extras de cada pedido
-#------------------------------------------SESSÃO 5---------------------------------------------------------------  
                         elif word[0] == "NATURA" or word[0] == "PLAIN":
                             print(word)
                             PickList[product_index - 1].natura = "True"
@@ -339,7 +251,7 @@ def main():
                             p = " ".join(word)
                             
                             save_erro(config.file_extra_desconhecido,p) #Guarda o extra no seguinte ficheiro)
-                            print("Erro Sessão 5 - Extra não conhecido: " + str(p))
+                            print("Erro Sessão NATURA - Extra não conhecido: " + str(p))
 
                             peso_extra = 0 #peso extra é 0
                             
@@ -351,8 +263,10 @@ def main():
                                 PickList[product_index - 1].extra = PickList[product_index - 1].extra + [str_extra]
                                 PickList[product_index - 1].extra_peso = PickList[product_index - 1].extra_peso + [peso_extra]
                                 
-                            c = c + 1 #flag contador de extras de cada pedido
+                            c += 1 #flag contador de extras de cada pedido
+
 #---------------------------------------------CÁLCULO DO PESO-----------------------------------------------------------------  
+
             #calcular peso total de cada produto
             for i in range(len(PickList)):
                 peso = 0
@@ -367,7 +281,9 @@ def main():
                     PickList[i].peso_produto=peso                
                 print(peso)
             print(GREEN + "Soma efetuada." +RESET)
+
 #---------------------------------------------COMMIT PARA A BD-----------------------------------------------------------------  
+
             # Convert to JSON string
             jsonStr = json.dumps([ob.__dict__ for ob in PickList], indent=4, sort_keys=True)
             print(jsonStr)
@@ -393,7 +309,9 @@ def main():
                 time_string = get_string_time()
                 logf.write(time_string + "; Recibo_processing" + "Várias pick_list" + str(file_name) + '\n')
                 logf.close()
+
 #---------------------------------------------LOG DE ERRO-----------------------------------------------------------------  
+
         except Exception as e:
             time.sleep(2)
             os.rename(config.file_dir_pick_list+'//'+file_name, config.file_dir_erro+'//'+file_name)
