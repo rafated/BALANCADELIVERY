@@ -23,6 +23,9 @@ class pick_list:
     def __repr__(self):
         return pick_list
 
+def do_nothing():
+    return
+
 def get_string_time():
     current_time = datetime.datetime.now()
     time_string = current_time.strftime('%Y%m%d_%Hh%Mm%Ss')
@@ -181,37 +184,40 @@ def main():
                         product_index += 1
                         c = 0  # faz reset ao contador de extras
 
-#------------------------------------------SESSÃO SEM/EXTRA/COM/SO---------------------------------------------------------------
+#------------------------------------------SESSÃO PROCESSAMENTO DE EXTRAS---------------------------------------------------------------
 
                     else: #caso a primeira palavra não seja um número
                         q = 1
-                        if word[0] == "COM" or word[0] == "EXTRA" or word[0] == "SO" or word[0] == "SEM":
-                            print(word)
-                            ing=word[:] #copia o array word
-                            ing.pop(0)#apaga a primeira palavra
-                            p=" ".join(ing)    #junta todas as palavras da linha
-                            if word[1].isdigit():   #caso os extras tenham quantidades (ex. Extra 2 queijo)
-                                q=int(word[1]) #guarda a quantidade de extras
-                                ing.pop(0)
-                                p=" ".join(ing)
-
-                            #Procura na base de dados uma correspondência (tabela ingredientes)
-                            cur.execute("SELECT * FROM ingredientes WHERE nome = :name ",{"name":p})
-                            resposta = cur.fetchall()
-
-                            if resposta:
-                                if word[0] == "SEM":
-                                    peso_extra = resposta[0][2] * q * (-1)
-                                elif word[0] == "NATURA" or word[0] == "PLAIN":
-                                    PickList[product_index - 1].natura = "True"
-                                    peso_extra = 0 #peso extra é 0
-                                else:
-                                    peso_extra = resposta[0][2] * q #peso vezes a quantidade (default q =1)
+                         #Ignora o o caractere na hora do processamento (Esse caracrtere separa cada classe de produto dentro da Picklist) 
+                        if word[0] == "COM" or word[0] == "EXTRA" or word[0] == "SO" or word[0] == "SEM" or word[0] == "NATURA" or word[0] == "PLAIN":
+                            if word[0] == "NATURA" or word[0] == "PLAIN":
+                                PickList[product_index - 1].natura = "True"
+                                peso_extra = 0
                             else:
-                                #todos os extras "não conhecidos"
-                                save_erro(config.file_extra_desconhecido,p) #Guarda o extra no seguinte ficheiro)
-                                print("Erro Sessão COM/EXTRA/SO/SEM - Extra não conhecido: " + str(p))
-                                peso_extra = 0 #define variavel peso extra
+                                print(word)
+                                ing=word[:] #copia o array word
+                                ing.pop(0)#apaga a primeira palavra
+                                p=" ".join(ing)    #junta todas as palavras da linha
+                                if word[1].isdigit():   #caso os extras tenham quantidades (ex. Extra 2 queijo)
+                                    q=int(word[1]) #guarda a quantidade de extras
+                                    ing.pop(0)
+                                    p=" ".join(ing)
+
+                                #Procura na base de dados uma correspondência (tabela ingredientes)
+                                cur.execute("SELECT * FROM ingredientes WHERE nome = :name ",{"name":p})
+                                resposta = cur.fetchall()
+
+                                if resposta:
+                                    #Caso tenhamos o prefixo "SEM", significa que o peso do extra será tendo em vista que o ingrediente não fará parte do produto
+                                    if word[0] == "SEM":
+                                        peso_extra = resposta[0][2] * q * (-1)
+                                    else:
+                                        peso_extra = resposta[0][2] * q #peso vezes a quantidade (default q =1)
+                                else:
+                                    #todos os extras "não conhecidos"
+                                    save_erro(config.file_extra_desconhecido,p) #Guarda o extra no seguinte ficheiro)
+                                    print("Erro Sessão COM/EXTRA/SO/SEM - Extra não conhecido: " + str(p))
+                                    peso_extra = 0 #define variavel peso extra
 
                             str_extra=" ".join(word) #Define o texto dos extras para guardar na pick list
 
@@ -224,50 +230,22 @@ def main():
                                 
                             c += 1 #flag contador de extras de cada pedido                                
 
-#------------------------------------------SESSÃO NATURA---------------------------------------------------------------  
-
-                        elif word[0] == "NATURA" or word[0] == "PLAIN":
-                            print(word)
-                            PickList[product_index - 1].natura = "True"
-                            peso_extra = 0 #peso extra é 0
-                            
-                            str_extra=" ".join(word) #Define o texto dos extras para guardar na pick list
-                            if c == 0:    #se for o primeiro extra do produto
-                                PickList[product_index - 1].extra = [str_extra]
-                                PickList[product_index - 1].extra_peso = [peso_extra]
-                            else:       #para os restantes extras do produtos
-                                PickList[product_index - 1].extra = PickList[product_index - 1].extra + [str_extra]
-                                PickList[product_index - 1].extra_peso = PickList[product_index - 1].extra_peso + [peso_extra]
-                            
-                            c = c + 1 #flag contador de extras de cada pedido
-                        elif word[0][0] == "-":
-                                #do nada
-                                asd=0
-                        elif word[0] == "TAKE" or word[0] == "OUT" or word[0] == "ORDER":
-                            #do nada
-                            asd=0 
+                        #Ignora essas palavras na hora do processamento
+                        elif word[0] == "--------------------" or word[0] == "---------------------------------------" or word[0] == "TAKE" or word[0] == "OUT" or word[0] == "ORDER":
+                            do_nothing()
                         else:
                             #todos os tipos de extras "não conhecidos"
                             p = " ".join(word)
                             
                             save_erro(config.file_extra_desconhecido,p) #Guarda o extra no seguinte ficheiro)
-                            print("Erro Sessão NATURA - Extra não conhecido: " + str(p))
+                            print("Erro no processamento do EXTRA - Extra não conhecido: " + str(p))
 
                             peso_extra = 0 #peso extra é 0
-                            
                             str_extra = p #Define o texto dos extras para guardar na pick list
-                            if c == 0:    #se for o primeiro extra do produto
-                                PickList[product_index - 1].extra = [str_extra]
-                                PickList[product_index - 1].extra_peso = [peso_extra]
-                            else:       #para os restantes extras do produtos
-                                PickList[product_index - 1].extra = PickList[product_index - 1].extra + [str_extra]
-                                PickList[product_index - 1].extra_peso = PickList[product_index - 1].extra_peso + [peso_extra]
-                                
-                            c += 1 #flag contador de extras de cada pedido
 
 #---------------------------------------------CÁLCULO DO PESO-----------------------------------------------------------------  
 
-            #calcular peso total de cada produto
+            #alcular peso total de cada produto
             for i in range(len(PickList)):
                 peso = 0
                 if PickList[i].name:
