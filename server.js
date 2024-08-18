@@ -1,46 +1,77 @@
-//Define e importa o modulos necesarios para a execução do codigo
 const express = require('express');
-const body_parser = require('body-parser');
-
-
-//Cria uma instancia da aplicação express
+const sqlite3 = require('sqlite3').verbose();
 const app = express();
-const port = process.env.PORT || 3000;
+const port = 3000;
 
-//--------------------------------------------------------
-//POST REQUEST
-app.use(body_parser.json());
-
-app.post('/register', (req, res) => {
-    const { username, password } = req.body;
-    console.log(`username: ${username} password: ${password}`);
-    res.json({message: 'Dados recebidos com sucesso!', dadosRecebidos: req.body});
-});
-//--------------------------------------------------------
-//GET REQUEST
-app.get('/login', (req, res) => {
-    const { username, password } = req.query;
-    console.log(`username: ${username} password: ${password}`);
-    res.json({ message: 'Autenticado com sucesso!', dadosRecebidos: req.query});
+// Conectando ao banco de dados SQL
+let db = new sqlite3.Database('/Users/matheusmarciano/Desktop/Estágio MCD/API_TEST/db_picklist.db', (err) => {
+    if (err) {
+        console.error('Erro ao conectar ao banco de dados:', err.message);
+    } else {
+        console.log('Conectado ao banco de dados SQLite.');
+    }
 });
 
-app.listen(port , () => {
-    console.log(`Server is running on port ${port}`);
+// Middleware para lidar com JSON
+app.use(express.json());
+
+//Rota GET para buscar produtos com designação específica
+app.get('/api/produtos', (req, res) => {
+    const name = req.query.name;
+
+    const sql = `
+        SELECT * FROM produtos 
+        INNER JOIN designacao ON designacao.produto_id = produtos.produto_id 
+        WHERE designacao.nome = ?`;
+
+    db.all(sql, [name], (err, rows) => {
+        if (err) {
+            console.error('Erro ao buscar produtos:', err.message);
+            res.status(500).json({ error: "Erro ao buscar produtos." });
+        } else {
+            console.log('Dados retornados com sucesso: ', rows);
+            res.json(rows);
+        }
+    });
 });
 
-/*
-Vamos definit uma rota para teste de resquests
-app.get('/', (req, res) => {
-    res.send('Hello, express!');
+//Rota GET para buscar ingredientes por nome
+app.get('/api/ingredientes', (req, res) => {
+    const name = req.query.name;
+
+    const sql = "SELECT * FROM ingredientes WHERE nome = ?";
+    db.all(sql, [name], (err, rows) => {
+        if (err) {
+            console.error('Erro ao buscar ingredientes:', err.message);
+            res.status(500).json({ error: "Erro ao buscar ingredientes." });
+        } else {
+            console.log('Dados retornados com sucesso: ', rows);
+            res.json(rows);
+        }
+    });
 });
 
-const data = {
-    name: 'John Doe',
-    age: 30,
-    email: 'johndoe@example.com'
-};
+//Rota POST para inserir dados na tabela pick_list
+app.post('/api/pick_list', (req, res) => {
+    const { numero_pedido, list, file_name, estado } = req.body;
 
-app.get('/resgiter', (req, res) => {
-    res.send(data);
+    const sql = `
+        INSERT INTO pick_list (delivery_name, list, pick_list_file, state, confirmado) 
+        VALUES (?, ?, ?, ?, ?)`;
+    const params = [numero_pedido, list, file_name, estado, estado];
+
+    db.run(sql, params, function(err) {
+        if (err) {
+            console.error('Erro ao inserir na pick_list:', err.message);
+            res.status(500).json({ error: "Erro ao inserir dados na pick_list." });
+        } else {
+            
+            res.status(201).json({ message: "Dados inseridos com sucesso.", id: this.lastID });
+        }
+    });
 });
-*/
+
+// Iniciando o servidor
+app.listen(port, () => {
+    console.log(`Servidor rodando em http://localhost:${port}`);
+});
