@@ -1,49 +1,46 @@
 #-------------Comum------------
-prog_dir='C:\\Users\\BALAL\\Documents\\Pesagem2\\'
-
+prog_dir='C:/Users/rafae/OneDrive/Desktop/Balv1'
 #portas Serial
-port_com_balanca = 'COM9' #porta balança
-port_com_arduino = 'COM7' #porta impressora
+port_com_balanca = 'COM3' #porta balança
+port_com_arduino = 'COM4' #porta impressora
 
+rest_code = 51
+api_offline = False
+dlv = False
 
 #db='example.db'
-db='db_picklist.db'
+data_base = prog_dir + '/Instance/db_picklist.db'
 
 
 #pasta temporária para recibos
-temp_file_dir = prog_dir+'temp_faturas'
+temp_file_dir = prog_dir + '/Orders_Resources/temp_files'
 
-#-------------recibo processing----------
-url = 'http://orbmcdelivery.com/pedidos/add_picklist_pedido'
-email = 'Restaurante_alges@orbmcdelivery.com'
-#email = 'Restaurante_Demo@orbmcdelivery.com'
-password = 'test'
+#-------------Recibo processing------------
+unknown_products_errors = prog_dir + '/Logs_and_errors/unknown_products_errors.txt'
+unknown_extras_errors = prog_dir + '/Logs_and_errors/extras_errors.txt'
+filtered_unknown_products_errors = prog_dir + '/Logs_and_errors/filtered_unknown_products_errors.txt'
+sound_tarte = prog_dir + '/Services/Main_Services/tartes.wav'
+errors_log = prog_dir + '/Logs_and_errors/error_log.log'
 
+file_dir_pick_list = prog_dir +'/Orders_Resources/pick_list'
 
-file_produto_desconhecido=prog_dir+'erro_produtos.txt'
-file_extra_desconhecido=prog_dir+'erro_extras.txt'
-file_desconhecido_filtrado=prog_dir+'erro_produtos_filtrado.txt'
-sound_tarte=prog_dir+'tartes.wav'
+file_dir_fatura = prog_dir + '/Orders_Resources/invoices'
 
+file_dir_erro = prog_dir + '/Logs_and_errors/errors'
 
-file_dir_pick_list=prog_dir+'pick_list'
-
-file_dir_fatura=prog_dir+'faturas'
-
-file_dir_erro=prog_dir+'erros'
-
-
-#------------------Save data printer--------------
-
-#------------------GUI---------------------------
-url_entrega = 'http://orbmcdelivery.com/pedidos/move_entrega_byscanner'
-
-
+api_url='https://85.246.46.140:3000/api'
 
 #--------------leitura_balanca--------------
 
 port_com_arduino_led = 'COM10'
 
-img_path =prog_dir+'fotos\\'
+img_path = prog_dir + "/Orders_Resources/fotos"
 
-file_pesagem=prog_dir+'pesagem.txt'
+file_pesagem = prog_dir + '/Orders_Resources/pesagem.txt'
+
+def set_api_offline():
+    global api_offline
+    api_offline = True
+def set_api_online():
+    global api_offline
+    api_offline = False  
