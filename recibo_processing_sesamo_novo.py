@@ -140,7 +140,7 @@ def main():
             else:
                 identifier = "DRIVE"    
             for word in lines:
-                if identifier in word:
+                if "DRIVE" in word:
                     if(config.dlv == True):
                         codigo_delivery = lines[array_posicao + 2]
                     else:
@@ -207,12 +207,13 @@ def main():
                             if(config.api_offline == True):
                                 PickList[product_index].name = resposta[0][1]
                                 PickList[product_index].peso = resposta[0][2]
-                                PickList[product_index].variancia = resposta[0][3]
+                                PickList[product_index].variancia = resposta[0][2]
                                 PickList[product_index].peso_natura = resposta[0][4]
                                 PickList[product_index].tipo = resposta[0][5]
                         else:
                             if ((p == r"N\X84O, OBRIGADO!") or (p == r"TAXA SERVI\X87O") or (p == r"SEM MOLHO")) != 1:
                                 PickList[product_index].name = p
+                                PickList[product_index].natura = False
                                 PickList[product_index].peso = 0
                                 PickList[product_index].variancia = 0
                                 PickList[product_index].peso_natura = 0
@@ -227,7 +228,7 @@ def main():
                         q = 1
                         peso_extra = 0
                         if word[0] in ["APENAS", "SO"]:
-                                apenas = True
+                            apenas = True
                         if word[0] in ["COM", "EXTRA", "SO", "SEM", "NATURA", "PLAIN", "APENAS"]:
                             if word[0] in ["EXTRA"] and word[1] in ["NATURA", "PLAIN"]:
                                 PickList[product_index - 1].natura = "True"
@@ -235,6 +236,7 @@ def main():
                             if word[0] in ["NATURA", "PLAIN"]:
                                 PickList[product_index - 1].natura = "True"
                                 peso_extra = 0
+
                             else:
                                 ing = word[:]
                                 ing.pop(0)
@@ -347,6 +349,8 @@ def main():
             jsonStr = json.dumps([ob.__dict__ for ob in PickList], indent=4, sort_keys=True)
             print(jsonStr)
 
+            time_stamp = get_string_time()
+            print("Time stamp: ", time_stamp)
             codigo_restaurante = config.rest_code
             api_connection = teste_api_connection()
             #CONEXÃO FEITA COM SUCESSO
@@ -358,8 +362,8 @@ def main():
                     "file_name": file_name,
                     "estado": estadoinicial,
                     "pendente": 0,
-                    "codigo_restaurante": codigo_restaurante
-
+                    "codigo_restaurante": codigo_restaurante,
+                    "time_stamp": time_stamp
                 }
                 response = requests.post(url, json=data, verify=False)  # Verify False for development only
 
@@ -374,7 +378,7 @@ def main():
                 #Chamada da função para conexão com o banco de dados
                 con, cur, estadoinicial = open_database_connection()
                 if con is not None:
-                    cur.execute("INSERT INTO pick_list (delivery_name, list, pick_list_file, state, confirmado, pendente, codigo_restaurante) VALUES (:numero_pedido, :list, :file_name, :estado, :estado, :pendente, :codigo_restaurante)",
+                    cur.execute("INSERT INTO pick_list (delivery_name, list, pick_list_file, state, confirmado, pendente, codigo_restaurante) VALUES (:numero_pedido, :list, :file_name, :estado, :estado, :pendente, :codigo_restaurante) VALUES (:",
                         {"numero_pedido": codigo_delivery,
                         "list": str(jsonStr), 
                         "file_name": file_name, 
