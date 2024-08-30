@@ -192,13 +192,14 @@ def fetch_order_details(order_number):
             return None
 
     
-def send_weight_data_to_api(pick_list_id, peso_estimado, peso_real):
+def send_weight_data_to_api(pick_list_id, peso_estimado, peso_real, photo):
     if(config.api_offline == False):
         url = f"{config.api_url}/pesagem"  # Endpoint da API para inserir dados na tabela pesagem
         payload = {
             "pick_list_id": pick_list_id,
             "peso_estimado": peso_estimado,
             "peso_real": peso_real,
+            "photo": photo
         }
         try:
             response = requests.post(url, json=payload, verify=False)  # Enviando o payload como JSON
@@ -255,7 +256,7 @@ def create_button(nr_pedido, row_counter, row_number_view):
         print(f"{CYAN}Creating button for pedido: {nr_pedido}, row_counter: {row_counter}, row_number_view: {row_number_view}{RESET}")
         row = [sg.pin(
             sg.Col([[
-                sg.Button("X", border_width=0, visible=True, key=('-DEL-', nr_pedido)),
+                sg.Button("X", border_width=0, visible=True, key=('-DEL-', nr_pedido), button_color=("white", "red")),
                 sg.Button(nr_pedido, size=(18, 2), font=("Arial Bold", 18), key=('-DESC-', nr_pedido)),
                 sg.Text(f'{row_number_view}', key=('-STATUS-', row_counter))
             ]], key=('-ROW-', nr_pedido)
@@ -323,7 +324,8 @@ def build_layout():
                  [sg.Text('', size=(1, 5))],
                  [sg.Button('Reiniciar GUI', key='restart-gui', font=("Arial", 10), size=(15, 2), button_color='orange')]]  # Novo botão adicionado
 
-    molhos_col = [[sg.Text(key='-molho-', text='', size=(20, 15), font=("Arial Bold", 22), text_color='Red', justification='c')],
+    molhos_col = [[sg.Text(key='-molho-', text='', size=(22, 7), font=("Arial Bold", 22), text_color='Red', justification='c')],
+                  [sg.Text(key='-tarte-', text='', size=(22, 7), font=("Arial Bold", 22), text_color='Red', justification='c')],
                   [sg.Text("Camera", size=(10, 1))],
                   [sg.Image(filename="", key="cam")]]
 
@@ -369,8 +371,6 @@ def process_order(window, order, serial_scale, camera):
     window['-Peso_t-'].update(f'{peso}')
 
     if peso > 1300:
-        peso += 28
-    else:
         peso += 14
 
     capture_image(camera, order['delivery_name'], window)
@@ -395,12 +395,25 @@ def calculate_order_weight(window, order_json):
                 found_ketchup = True
             display_order_item(window, '-ML1-', item, 'orange')
         elif item["tipo"] == "Addon":
-            peso += int(item["quantidade"]) * item["peso_produto"]
+            #Exclui a sopa no cálculo do peso do pedido.
+            if 'sopa' in item["name"].lower():
+                peso += 0
+            else:
+                peso += int(item["quantidade"]) * item["peso_produto"]
             display_order_item(window, '-ML5-', item)
         elif item["tipo"] == "Sanduiche":
             if 'tarte de maca' in item["name"].lower():
                 found_tarte = True  # Marcurque uma tarte de maçã foi encontrada
-            peso += int(item["quantidade"]) * item["peso_produto"]
+            existe_campo_natura = any('natura' in item for item in order_json)
+            # Imprime o resultado da verificação
+            if existe_campo_natura:
+                print("Existe um objeto com o campo 'natura' presente.")
+                peso += int(item["quantidade"]) * item["peso_natura"]
+            else:
+                print("Não existe nenhum objeto com o campo 'natura'.")
+                peso += int(item["quantidade"]) * item["peso_produto"]
+            # Verifica se existe algum objeto na lista `order_json` que tenha o campo 'natura'
+                peso += int(item["quantidade"]) * item["peso_produto"]
             variancia += int(item["quantidade"]) * item["variancia"]
             display_order_item(window, '-ML2-', item)
         elif item["tipo"] == "Batata":
@@ -408,6 +421,7 @@ def calculate_order_weight(window, order_json):
             display_order_item(window, '-ML3-', item)
         elif item["tipo"] in ["Bebida", "Sobremesa", "Gelado"]:
             if 'saco de transporte' in item["name"].lower():
+                peso += 14
                 found_bag = True  # Marcurque uma saco foi encontrado
             display_order_item(window, '-ML4-', item)
        # Emitir alerta para molho
@@ -420,17 +434,17 @@ def calculate_order_weight(window, order_json):
             found_both = True
     
     if(found_both == True):
-        window['-molho-'].update('\n\n\n\n\n\n Atenção! \n\n O Pedido leva molho e ketchup!', background_color='#E78200', text_color='white')
+        window['-molho-'].update('\n\n Atenção! \n O Pedido leva molho e ketchup!', background_color='#E78200', text_color='white')
         found_molho = False
         found_ketchup = False
     if(found_molho == True):
-        window['-molho-'].update('\n\n\n\n\n\n Atenção! \n\n O Pedido leva molho!', background_color='orange', text_color='white')
+        window['-molho-'].update('\n\n Atenção! \n O Pedido leva molho!', background_color='orange', text_color='white')
     if(found_ketchup == True):
-        window['-molho-'].update('\n\n\n\n\n\n Atenção! \n\n O Pedido leva ketchup!', background_color='red', text_color='white')
-    
+        window['-molho-'].update('\n\n Atenção! \n O Pedido leva ketchup!', background_color='red', text_color='white')
     
     if(found_tarte):
-        display_order_item(window, '-ML4-', item, 'blue')
+        #Muda a cor do campo das sobremesas alertando que há uma tarte no pedido
+        window['-tarte-'].update('\n\n Atenção! \n O pedido leva tarte de maça!', background_color='blue', text_color='white')
     # Mudar fundo do campo de sobremesas para azul se uma tarte de maçã for encontrada
 
     print(f"{CYAN}Calculated weight: {peso}, variancia: {variancia}{RESET}")
@@ -536,6 +550,7 @@ def process_weighing(window, serial_scale, estimated_weight, order_number, camer
                 pick_list_id=order_number,  # Supondo que `order_number` é o `pick_list_id`
                 peso_estimado=estimated_weight,
                 peso_real=actual_weight,
+                photo=image_file
             )
             
             window[('-ROW-', order_number)].update(visible=False)  # Remove o pedido da tela
@@ -567,7 +582,7 @@ def save_image(image_file, order_number):
 def update_confirmation_status(window, deviation):
     print(f"{CYAN}Updating confirmation status, deviation: {deviation}{CYAN}")
     if deviation > 100 or deviation < -60:
-        window['-Confirmar-'].update('\n Atenção, verificurnovamente o pedido!', background_color='red', text_color = 'white')
+        window['-Confirmar-'].update('\n Atenção, verificar novamente \n o pedido!', background_color='red', text_color = 'white')
         window['-Peso_d-'].update(str(deviation), background_color='red', text_color='black')
     else:
         window['-Confirmar-'].update('\n Pedido correcto. Pronto para entrega!', background_color='green', text_color = 'white')
@@ -629,6 +644,9 @@ def reset_orders(window):
 
     print(f"{CYAN}Resetting orders in the database and UI{RESET}")
 
+    window['-Confirmar-'].update('\n Por favor aguarde! \n Apagando os pedidos...', background_color="orange", text_color="white")
+    window.refresh()  # Atualiza a interface imediatament
+
     # Cancelar o intervalo anterior
     if funcpri is not None:
         funcpri.cancel()
@@ -641,7 +659,7 @@ def reset_orders(window):
                 window[key].update(visible=False)
             except KeyError:
                 pass
-
+    
     clear_display(window)
     clear_database_orders()
     
@@ -677,6 +695,8 @@ def reset_orders(window):
 def handle_order(window, order_number, serial_scale, camera):
     global funcpri  # Declarar funcpri como variável global
     print(f"{CYAN}Handling order: {order_number}{RESET}")
+    window['-Confirmar-'].update('\n Por favor, aguarde! \n Pesagem em andamento...', background_color="orange", text_color="white")
+    window.refresh()  # Atualiza a interface imediatament
     if funcpri is not None:
         funcpri.cancel()
     clear_display(window)
@@ -699,8 +719,9 @@ def clear_display(window):
     window['-Peso_d-'].update('', background_color="gray25", text_color='white')
     window['-Peso_t-'].update('', background_color="gray25", text_color='black')
     window['-Peso_r-'].update('', background_color="gray25", text_color='black')
-    window['-Confirmar-'].update('', background_color="gray50")
-    window['-molho-'].update('', background_color="gray25")
+    window['-Confirmar-'].update('\nBem-vindo! Selecione um pedido para pesagem', background_color="green", text_color="white")
+    window['-molho-'].update('', background_color="gray25", text_color='white')
+    window['-tarte-'].update('', background_color="gray25", text_color='white')
 
 def log_error(e):
     print(f"{RED}Logging error: {e}{RESET}")
