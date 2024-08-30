@@ -109,12 +109,12 @@ app.post('/api/pick_list',
             return res.status(400).json({ errors: errors.array() });
         }
 
-        const { numero_pedido, list, file_name, estado, pendente, codigo_restaurante } = req.body;
+        const { numero_pedido, list, file_name, estado, pendente, codigo_restaurante, time_stamp} = req.body;
 
         const sql = `
-            INSERT INTO pick_list (delivery_name, list, pick_list_file, state, confirmado, pendente, codigo_restaurante) 
-            VALUES (?, ?, ?, ?, ?, ?, ?)`;
-        const params = [numero_pedido, list, file_name, estado, estado, pendente, codigo_restaurante];
+            INSERT INTO pick_list (delivery_name, list, pick_list_file, state, confirmado, pendente, codigo_restaurante, time_stamp) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
+        const params = [numero_pedido, list, file_name, estado, estado, pendente, codigo_restaurante, time_stamp];
 
         db.run(sql, params, function(err) {
             if (err) {
@@ -283,12 +283,12 @@ app.post('/api/pesagem',
             return res.status(400).json({ errors: errors.array() });
         }
 
-        const { pick_list_id, peso_estimado, peso_real} = req.body;
+        const { pick_list_id, peso_estimado, peso_real, photo} = req.body;
 
         const sql = `
-            INSERT INTO pesagem (pick_list_id, peso_estimado, peso_real) 
-            VALUES (?, ?, ?)`;
-        const params = [pick_list_id, peso_estimado, peso_real];
+            INSERT INTO pesagem (pick_list_id, peso_estimado, peso_real, photo) 
+            VALUES (?, ?, ?, ?)`;
+        const params = [pick_list_id, peso_estimado, peso_real, photo];
 
         db.run(sql, params, function(err) {
             if (err) {
