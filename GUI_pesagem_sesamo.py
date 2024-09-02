@@ -390,41 +390,62 @@ def calculate_order_weight(window, order_json):
     for item in order_json:
         if item["tipo"] == "Molho":
             if 'molho' in item["name"].lower():
-                found_molho = True  # Marcurque um molho foi encontrado
+                found_molho = True
             if 'ketchup' in item["name"].lower():
                 found_ketchup = True
             display_order_item(window, '-ML1-', item, 'orange')
         elif item["tipo"] == "Addon":
-            #Exclui a sopa no cálculo do peso do pedido.
-            if 'sopa' in item["name"].lower():
-                peso += 0
-            else:
+            if 'sopa' not in item["name"].lower():
                 peso += int(item["quantidade"]) * item["peso_produto"]
+                print(f"Peso atualizado (Addon): {peso}")
             display_order_item(window, '-ML5-', item)
         elif item["tipo"] == "Sanduiche":
-            if 'tarte de maca' in item["name"].lower():
-                found_tarte = True  # Marcurque uma tarte de maçã foi encontrada
-            existe_campo_natura = any('natura' in item for item in order_json)
-            # Imprime o resultado da verificação
-            if existe_campo_natura:
-                print("Existe um objeto com o campo 'natura' presente.")
-                peso += int(item["quantidade"]) * item["peso_natura"]
+            # Verifica se o item possui peso negativo (Happy Meal ou similar)
+            if item["peso"] < 0:
+                if 'natura' in item:
+                    peso += int(item["quantidade"]) * item["peso"]
+                else:
+                    # Aplica o peso negativo diretamente para compensar o peso de outros itens
+                    peso += int(item["quantidade"]) * item["peso_produto"]
+                print(f"Peso atualizado (Happy Meal/Negativo): {peso}")
             else:
-                print("Não existe nenhum objeto com o campo 'natura'.")
-                peso += int(item["quantidade"]) * item["peso_produto"]
-            # Verifica se existe algum objeto na lista `order_json` que tenha o campo 'natura'
-                peso += int(item["quantidade"]) * item["peso_produto"]
+                # Verifica se o próprio item possui o campo 'natura' e usa 'peso_natura' se aplicável
+                if 'natura' in item:
+                    peso += int(item["quantidade"]) * item["peso_natura"]
+                else:
+                    peso += int(item["quantidade"]) * item["peso_produto"]
+                print(f"Peso atualizado (Sanduiche): {peso}")
+            
+            # Atualiza a variância
             variancia += int(item["quantidade"]) * item["variancia"]
+            
+            # Verifica se o item é uma tarte de maçã
+            if 'tarte de maca' in item["name"].lower():
+                found_tarte = True
             display_order_item(window, '-ML2-', item)
         elif item["tipo"] == "Batata":
             peso += int(item["quantidade"]) * item["peso_produto"]
+            print(f"Peso atualizado (Batata): {peso}")
             display_order_item(window, '-ML3-', item)
         elif item["tipo"] in ["Bebida", "Sobremesa", "Gelado"]:
             if 'saco de transporte' in item["name"].lower():
                 peso += 14
-                found_bag = True  # Marcurque uma saco foi encontrado
+                found_bag = True
             display_order_item(window, '-ML4-', item)
-       # Emitir alerta para molho
+
+# Simplificando a lógica de alerta de molho
+    if found_molho or found_ketchup:
+        if found_molho and found_ketchup:
+            window['-molho-'].update('\n\n Atenção! \n O Pedido leva molho e ketchup!', background_color='#E78200', text_color='white')
+        elif found_molho:
+            window['-molho-'].update('\n\n Atenção! \n O Pedido leva molho!', background_color='orange', text_color='white')
+        elif found_ketchup:
+            window['-molho-'].update('\n\n Atenção! \n O Pedido leva ketchup!', background_color='red', text_color='white')
+
+    if found_tarte:
+        window['-tarte-'].update('\n\n Atenção! \n O pedido leva tarte de maça!', background_color='blue', text_color='white')
+
+
 #-----------------ALTERAR INEFICIENTE------------------------------------
     if (found_molho == True):
         if(found_ketchup == True):
