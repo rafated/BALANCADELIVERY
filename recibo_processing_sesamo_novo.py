@@ -164,6 +164,11 @@ def main():
                         PickList.append(pick_list())
                         PickList[product_index].quantidade = word[0]
                         word.pop(0)
+
+                        if word[-1]=='1P' or word[-1]=='2P' or word[-1]=='3P' or word[-1]=='4P':
+                            word.pop()  #apaga as possiveis promos no produto
+                            print("promo")
+
                         p = " ".join(word)
 #------------------------------------------BUSCA DE DADOS -------------------------------------------------------------------------  
                         api_connection = teste_api_connection()
@@ -236,7 +241,6 @@ def main():
                             if word[0] in ["NATURA", "PLAIN"]:
                                 PickList[product_index - 1].natura = "True"
                                 peso_extra = 0
-
                             else:
                                 ing = word[:]
                                 ing.pop(0)
