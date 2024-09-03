@@ -140,7 +140,7 @@ def main():
             else:
                 identifier = "DRIVE"    
             for word in lines:
-                if "DRIVE" in word:
+                if identifier in word:
                     if(config.dlv == True):
                         codigo_delivery = lines[array_posicao + 2]
                     else:
