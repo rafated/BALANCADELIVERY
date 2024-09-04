@@ -164,17 +164,12 @@ def main():
                         PickList.append(pick_list())
                         PickList[product_index].quantidade = word[0]
                         word.pop(0)
-
-                        if word[-1]=='1P' or word[-1]=='2P' or word[-1]=='3P' or word[-1]=='4P':
-                            word.pop()  #apaga as possiveis promos no produto
-                            print("promo")
-
                         p = " ".join(word)
 #------------------------------------------BUSCA DE DADOS -------------------------------------------------------------------------  
                         api_connection = teste_api_connection()
 
                         #CONEXÃO FEITA COM SUCESSO
-                        if(api_connection == 1):
+                        if(config.api_offline == False):
                             url = config.api_url + "/produtos"
                             params = {"name": p}
 
@@ -212,13 +207,12 @@ def main():
                             if(config.api_offline == True):
                                 PickList[product_index].name = resposta[0][1]
                                 PickList[product_index].peso = resposta[0][2]
-                                PickList[product_index].variancia = resposta[0][2]
+                                PickList[product_index].variancia = resposta[0][3]
                                 PickList[product_index].peso_natura = resposta[0][4]
                                 PickList[product_index].tipo = resposta[0][5]
                         else:
                             if ((p == r"N\X84O, OBRIGADO!") or (p == r"TAXA SERVI\X87O") or (p == r"SEM MOLHO")) != 1:
                                 PickList[product_index].name = p
-                                PickList[product_index].natura = False
                                 PickList[product_index].peso = 0
                                 PickList[product_index].variancia = 0
                                 PickList[product_index].peso_natura = 0
@@ -233,7 +227,7 @@ def main():
                         q = 1
                         peso_extra = 0
                         if word[0] in ["APENAS", "SO"]:
-                            apenas = True
+                                apenas = True
                         if word[0] in ["COM", "EXTRA", "SO", "SEM", "NATURA", "PLAIN", "APENAS"]:
                             if word[0] in ["EXTRA"] and word[1] in ["NATURA", "PLAIN"]:
                                 PickList[product_index - 1].natura = "True"
@@ -352,9 +346,7 @@ def main():
 #---------------------------------------------COMMIT PARA PARA O BANCO DE DADOS-----------------------------------------------------------------  
             jsonStr = json.dumps([ob.__dict__ for ob in PickList], indent=4, sort_keys=True)
             print(jsonStr)
-
             time_stamp = get_string_time()
-            print("Time stamp: ", time_stamp)
             codigo_restaurante = config.rest_code
             api_connection = teste_api_connection()
             #CONEXÃO FEITA COM SUCESSO
@@ -366,8 +358,7 @@ def main():
                     "file_name": file_name,
                     "estado": estadoinicial,
                     "pendente": 0,
-                    "codigo_restaurante": codigo_restaurante,
-                    "time_stamp": time_stamp
+                    "codigo_restaurante": codigo_restaurante
                 }
                 response = requests.post(url, json=data, verify=False)  # Verify False for development only
 
@@ -378,17 +369,21 @@ def main():
             #CONEXÃO NÃO ESTABELECIDA COM SUCESSO
             else:
                 config.set_api_offline()
+                #Declara que um pedido será inderido na base de dados local, oque 
+                config.set_pending_order_true()
                 pendente = 0
+
                 #Chamada da função para conexão com o banco de dados
                 con, cur, estadoinicial = open_database_connection()
                 if con is not None:
-                    cur.execute("INSERT INTO pick_list (delivery_name, list, pick_list_file, state, confirmado, pendente, codigo_restaurante) VALUES (:numero_pedido, :list, :file_name, :estado, :estado, :pendente, :codigo_restaurante) VALUES (:",
+                    cur.execute("INSERT INTO pick_list (delivery_name, list, pick_list_file, state, confirmado, pendente, codigo_restaurante, time_stamp) VALUES (:numero_pedido, :list, :file_name, :estado, :estado, :pendente, :codigo_restaurante_, time_stamp) VALUES (:",
                         {"numero_pedido": codigo_delivery,
                         "list": str(jsonStr), 
                         "file_name": file_name, 
                         "estado":estadoinicial,
                         "pendente": pendente,
-                        "codigo_restaurante": codigo_restaurante})
+                        "codigo_restaurante": codigo_restaurante,
+                        "time_stmap": time_stmap})
                     con.commit()
                     print(GREEN + "PickList gravada com sucesso no banco de dados." + RESET)
                 else:
