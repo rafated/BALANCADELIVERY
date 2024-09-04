@@ -42,15 +42,15 @@ def teste_api_connection():
             return 1
         else:
             print(RED + f"Falha na conexão à API: Status Code {response.status_code}" + RESET)
-            config.set_api_offline()
+            config.set_config.api_offline()
             return 0
     except requests.exceptions.Timeout:
         print(RED + "Falha na conexão à API: Tempo de resposta excedido (timeout)" + RESET)
-        config.set_api_offline()
+        config.set_config.api_offline()
         return 0
     except requests.exceptions.RequestException as e:
         print(RED + "Falha na conexão à API: " + str(e) + RESET)
-        config.set_api_offline()
+        config.set_config.api_offline()
         return 0
 
 
@@ -66,7 +66,6 @@ def open_database_connection():
     # Caso haja algum erro durante a abertura da base de dados, imprime uma mensagem de erro e retorna None
     except sqlite3.Error as e:
         return None, None
-
 
 def update_existing_order_button(window, nr_pedido):
     for key in list(window.AllKeysDict):
@@ -88,14 +87,26 @@ def fetch_last_order():
             return response.json()
         except requests.exceptions.RequestException as e:
             return None
-    else:
+
+    if(config.pending_order == True or config.api_offline == True):
         config.api_offline = True
         con, cur = open_database_connection()
         if con is not None:
             print(GREEN + "Conexão ao banco de dados bem-sucedida" + RESET)
             cur.execute(" SELECT * FROM pick_list WHERE state = 0 AND codigo_restaurante = :rest_code ORDER BY id DESC LIMIT 1", {"rest_code": config.rest_code})
             response = cur.fetchall()
-            return response
+            order_json = []
+            for responses in response:
+                order_json.append({
+                    "id": response[0],
+                    "delivery_name": response[1],
+                    "list": response[2],
+                    "peso_produto": response[3],
+                    "peso": response[4],
+                    "peso_natura": response[5],
+                    "variancia": response[6]
+                })
+            return order_json
         else:
             print(RED + "Erro ao abrir a base de dados" + RESET)
             return None
@@ -110,7 +121,7 @@ def update_order_state(order_number):
             print("Pedido confirmado com sucesso.")
         except requests.exceptions.RequestException as e:
             print(f"Erro ao confirmar o estado do pedido: {e}")
-    else:
+    if(config.pending_order == True or config.api_offline == True):
         con, cur= open_database_connection()
         if con is not None:
             print(GREEN + "Conexão ao banco de dados bem-sucedida" + RESET)
@@ -132,7 +143,7 @@ def confirm_order_api(order_number):
             print(f"{GREEN}Pedido {order_number} confirmado com sucesso.{RESET}")
         except requests.exceptions.RequestException as e:
             print(f"{RED}Erro ao confirmar o pedido: {e}{RESET}")
-    else:
+    if(config.pending_order == True or config.api_offline == True):
         con, cur= open_database_connection()
         if con is not None:
             print(GREEN + "Conexão ao banco de dados bem-sucedida" + RESET)
@@ -154,13 +165,20 @@ def fetch_order_state(order_number):
         except requests.exceptions.RequestException as e:
             print(f"{RED}Erro ao buscuro estado do pedido: {e}{RESET}")
             return None
-    else:
-        con, cur= open_database_connection()
+    if(config.pending_order == True or config.api_offline == True):
+        con, cur = open_database_connection()
         if con is not None:
             print(GREEN + "Conexão ao banco de dados bem-sucedida" + RESET)
-            cur.execute(" SELECT state, confirmado FROM pick_list WHERE delivery_name = :order_number AND codigo_restaurante = :rest_code ORDER BY id DESC LIMIT 1", {"order_number": order_number ,"rest_code": config.rest_code})
+            cur.execute("SELECT state, confirmado FROM pick_list WHERE delivery_name = :order_number AND codigo_restaurante = :rest_code ORDER BY id DESC LIMIT 1", {"order_number": order_number ,"rest_code": config.rest_code})
             response = cur.fetchall()
-            return response
+            
+            order_json = []
+            for responses in response:
+                order_json.append({
+                    "state": response[0],
+                    "confirmado": response[1],
+                })
+            return order_json
         else:
             print(RED + "Erro ao abrir a base de dados" + RESET)
             return None
@@ -180,13 +198,26 @@ def fetch_order_details(order_number):
         except requests.exceptions.RequestException as e:
             print(f"{RED}Erro ao buscurdetalhes do pedido: {e}{RESET}")
             return None
-    else:
-        con, cur= open_database_connection()
+    if(config.pending_order == True):
+        con, cur = open_database_connection()
         if con is not None:
             print(GREEN + "Conexão ao banco de dados bem-sucedida" + RESET)
             cur.execute(" SELECT * FROM pick_list WHERE delivery_name = :order_number AND codigo_restaurante = :rest_code ORDER BY id DESC LIMIT 1", {"order_number": order_number ,"rest_code": config.rest_code})
             response = cur.fetchall()
-            return response
+            # Converte os resultados da consulta em um formato de lista de dicionários para compatibilidade
+            order_json = []
+            for responses in response:
+                order_json.append({
+                    "tipo": response[0],
+                    "name": response[1],
+                    "quantidade": response[2],
+                    "peso_produto": response[3],
+                    "peso": response[4],
+                    "peso_natura": response[5],
+                    "variancia": response[6]
+                })
+
+            return order_json
         else:
             print(RED + "Erro ao abrir a base de dados" + RESET)
             return None
@@ -207,7 +238,7 @@ def send_weight_data_to_api(pick_list_id, peso_estimado, peso_real, photo):
             print(f"{GREEN}Dados de pesagem enviados com sucesso: {response.json()}{RESET}")
         except requests.exceptions.RequestException as e:
             print(f"{RED}Erro ao enviar dados de pesagem para a API: {e}{RESET}")
-    else:
+    if(config.pending_order == True):
         con, cur= open_database_connection()
         if con is not None:
             print(GREEN + "Conexão ao banco de dados bem-sucedida" + RESET)
@@ -219,7 +250,7 @@ def send_weight_data_to_api(pick_list_id, peso_estimado, peso_real, photo):
 
 def clear_database_orders():
     print("Clearing orders in the database via API")
-    if(config.api_offline == False):
+    if(config.api_offline == False or config.pending_order == False):
         url = f"{config.api_url}/pedidos/limpar"
         try:
             response = requests.post(url, verify=False)
@@ -227,7 +258,7 @@ def clear_database_orders():
             print(f"{GREEN}Pedidos limpos com sucesso na API.{RESET}")
         except requests.exceptions.RequestException as e:
             print(f"{RED}Erro ao limpar pedidos na API: {e}{RED}")
-    else:
+    if(config.pending_order == True):
         con, cur= open_database_connection()
         if con is not None:
             print(GREEN + "Conexão ao banco de dados bem-sucedida" + RESET)
@@ -265,9 +296,7 @@ def create_button(nr_pedido, row_counter, row_number_view):
     return row
 
 def restart_gui(window, serial_scale, camera):
-    """
-    Função para reiniciar a GUI sem a necessidade de um script bat.
-    """
+    #Função para reiniciar a GUI sem a necessidade de um script bat.
     global funcpri  # Acessa a variável global funcpri
 
     print(f"{CYAN}Reiniciando a GUI...{RESET}")
@@ -386,6 +415,9 @@ def calculate_order_weight(window, order_json):
     found_bag = False
     found_ketchup = False
     found_both = False
+
+    if(config.api_offline == True or config.pending_order == True):
+        pass
 
     for item in order_json:
         if item["tipo"] == "Molho":
@@ -539,9 +571,9 @@ def process_weighing(window, serial_scale, estimated_weight, order_number, camer
 
         try:
             # Verifica se o dado é do formato esperado e extrai o valor em kg
-            if scale_data.startswith('ST'):
+            if scale_data.startswith('+'):
                 # Extrai a parte do peso em kg (posição 7 até 14)
-                weight_kg = float(scale_data[7:14])
+                weight_kg = float(scale_data[3:8])
                 weight_grams = int(weight_kg * 1000)  # Converte para gramas
                 print(f"{CYAN}Processed weight: {weight_grams}{RESET}")  # Verificuro peso processado
                 if weight_grams > 0:
@@ -638,7 +670,10 @@ def verped(window, serial_scale, camera):
         time.sleep(3)  # Simula o tempo de espera de um pedido
         order = fetch_last_order()
         if order:
-            nr_pedido = order['delivery_name']
+            if(config.api_offline == True or config.pending_order == True):
+                nr_pedido = order[2]
+            else:
+                nr_pedido = order['delivery_name']
             print(f"{CYAN}New order found: {nr_pedido}{RESET}")
             
             # Verificurse o pedido já existe na interface
