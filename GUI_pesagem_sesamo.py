@@ -388,7 +388,7 @@ class SetInterval:
         self.stopEvent.set()
 
 # Main Logic Functions
-def process_order(window, order, serial_scale, camera):
+def process_order(window, order, serial_scale, camera, id):
     global row_counter, row_number_view
     print(f"{CYAN}Processing order: {order}{RESET}")
 
@@ -404,7 +404,7 @@ def process_order(window, order, serial_scale, camera):
 
     capture_image(camera, order['delivery_name'], window)
 
-    process_weighing(window, serial_scale, peso, order['delivery_name'], camera)
+    process_weighing(window, serial_scale, peso, order['delivery_name'], camera, id)
 
 def calculate_order_weight(window, order_json):
     print(f"{CYAN}Calculating weight for order items{RESET}")
@@ -557,7 +557,7 @@ def capture_image(camera, order_number, window):
         return None  # Retorna None em caso de exceção
 
 
-def process_weighing(window, serial_scale, estimated_weight, order_number, camera):
+def process_weighing(window, serial_scale, estimated_weight, order_number, camera, id):
     global weighing_attempts
     print(f"{CYAN}Processing weighing, estimated weight: {estimated_weight}{RESET}")
     weights = []
@@ -600,7 +600,7 @@ def process_weighing(window, serial_scale, estimated_weight, order_number, camer
             
             # Enviar os dados de pesagem para a API
             send_weight_data_to_api(
-                pick_list_id=order_number,  # Supondo que `order_number` é o `pick_list_id`
+                pick_list_id=id,  # Supondo que `order_number` é o `pick_list_id`
                 peso_estimado=estimated_weight,
                 peso_real=actual_weight,
                 photo=image_file
@@ -621,6 +621,14 @@ def process_weighing(window, serial_scale, estimated_weight, order_number, camer
                 print(f"{CYAN}Pedido {order_number} removido após 4 tentativas falhadas.{RESET}")
                 window[('-ROW-', order_number)].update(visible=False)
                 del weighing_attempts[order_number]  # Remover o pedido das tentativas
+            
+            send_weight_data_to_api(
+                pick_list_id=id,  # Supondo que `order_number` é o `pick_list_id`
+                peso_estimado=estimated_weight,
+                peso_real=actual_weight,
+                photo=image_file
+            )
+            
     else:
         print(f"{CYAN}Peso instável ou 0{RESET}")
         window['-Peso_r-'].update("Instável")
@@ -671,7 +679,7 @@ def verped(window, serial_scale, camera):
         order = fetch_last_order()
         if order:
             if(config.api_offline == True or config.pending_order == True):
-                nr_pedido = order[2]
+                nr_pedido = order[1]
             else:
                 nr_pedido = order['delivery_name']
             print(f"{CYAN}New order found: {nr_pedido}{RESET}")
@@ -757,8 +765,12 @@ def handle_order(window, order_number, serial_scale, camera):
         funcpri.cancel()
     clear_display(window)
     order = fetch_order_details(order_number)
+    if(config.api_offline == True or config.pending_order == True):
+        id = order[0]
+    else:
+        id = order['id']
     if order:
-        process_order(window, order, serial_scale, camera)
+        process_order(window, order, serial_scale, camera, id)
         if is_order_confirmed(order_number):
             global row_number_view
             row_number_view -= 1
