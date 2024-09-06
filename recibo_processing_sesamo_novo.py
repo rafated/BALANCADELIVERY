@@ -165,11 +165,12 @@ def main():
                         PickList.append(pick_list())
                         PickList[product_index].quantidade = word[0]
                         word.pop(0)
-                        p = " ".join(word)
-
+                        
                         if re.match(r'\d+P$', word[-1]):  # funciona para indetermináveis promocões
-                        word.pop()
-                        print("promo")
+                            word.pop()
+                            print("promo")
+
+                        p = " ".join(word)
 #------------------------------------------BUSCA DE DADOS -------------------------------------------------------------------------  
                         api_connection = teste_api_connection()
 
