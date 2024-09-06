@@ -8,6 +8,7 @@ import datetime
 from array import array
 import config  # importa as configurações/variáveis globais para cada instalação
 from urllib3.exceptions import InsecureRequestWarning
+import re
 
 # Suprimir o aviso de request inseguro
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
@@ -165,6 +166,10 @@ def main():
                         PickList[product_index].quantidade = word[0]
                         word.pop(0)
                         p = " ".join(word)
+
+                        if re.match(r'\d+P$', word[-1]):  # funciona para indetermináveis promocões
+                        word.pop()
+                        print("promo")
 #------------------------------------------BUSCA DE DADOS -------------------------------------------------------------------------  
                         api_connection = teste_api_connection()
 
