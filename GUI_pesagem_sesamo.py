@@ -39,20 +39,15 @@ def teste_api_connection():
         if response.status_code == 200:
             print(GREEN + "Conexão à API bem-sucedida" + RESET)
             config.set_api_online()
-            return 1
+            return True
         else:
             print(RED + f"Falha na conexão à API: Status Code {response.status_code}" + RESET)
-            config.set_config.api_offline()
-            return 0
-    except requests.exceptions.Timeout:
-        print(RED + "Falha na conexão à API: Tempo de resposta excedido (timeout)" + RESET)
-        config.set_config.api_offline()
-        return 0
+            config.set_api_offline()
+            return False
     except requests.exceptions.RequestException as e:
         print(RED + "Falha na conexão à API: " + str(e) + RESET)
-        config.set_config.api_offline()
-        return 0
-
+        config.set_api_offline()
+        return False
 
 def open_database_connection():
     try:
@@ -77,8 +72,7 @@ def update_existing_order_button(window, nr_pedido):
                 window[key].update(visible=True)  # Torna o botão visível, se foi ocultado
 
 def fetch_last_order():
-    api_connection = teste_api_connection()
-    if(api_connection == 1):
+    if teste_api_connection():  # Verifica se a API está online
         url = f"{config.api_url}/pedidos/ultimo"
         params = {'rest_code': config.rest_code}
         try:
@@ -86,55 +80,73 @@ def fetch_last_order():
             response.raise_for_status()
             return response.json()
         except requests.exceptions.RequestException as e:
+            #print(f"{RED}Erro ao buscar último pedido da API: {e}{RESET}")
             return None
 
-    if(config.pending_order == True or config.api_offline == True):
-        config.api_offline = True
-        con, cur = open_database_connection()
-        if con is not None:
-            print(GREEN + "Conexão ao banco de dados bem-sucedida" + RESET)
-            cur.execute(" SELECT * FROM pick_list WHERE state = 0 AND codigo_restaurante = :rest_code ORDER BY id DESC LIMIT 1", {"rest_code": config.rest_code})
-            response = cur.fetchall()
+    # Fallback para o banco de dados local
+    print(GREEN + "Usando o banco de dados local para buscar o último pedido." + RESET)
+    con, cur = open_database_connection()
+    if con is not None:
+        cur.execute("SELECT * FROM pick_list WHERE state = 0 AND codigo_restaurante = :rest_code ORDER BY id DESC LIMIT 1", {"rest_code": config.rest_code})
+        response = cur.fetchall()
+        if response:  # Verifica se há resultados na consulta
             order_json = []
-            for responses in response:
+            for r in response:
                 order_json.append({
-                    "id": response[0],
-                    "delivery_name": response[1],
-                    "list": response[2],
-                    "peso_produto": response[3],
-                    "peso": response[4],
-                    "peso_natura": response[5],
-                    "variancia": response[6]
+                    "id": r[0],
+                    "delivery_name": r[1],
+                    "list": r[2],
+                    "peso_produto": r[3],
+                    "peso": r[4],
+                    "peso_natura": r[5],
+                    "variancia": r[6]
                 })
             return order_json
         else:
-            print(RED + "Erro ao abrir a base de dados" + RESET)
+            print(RED + "Nenhum pedido encontrado no banco de dados local." + RESET)
             return None
+    else:
+        print(RED + "Erro ao abrir a base de dados" + RESET)
+        return None
+
 
 def update_order_state(order_number):
-    if(config.api_offline == False):
+    if teste_api_connection():  # Verifica se a API está online
         url = f"{config.api_url}/pedido/confirmar_estado"
         params = {'pedido': order_number, "rest_code": config.rest_code}
         try:
             response = requests.post(url, params=params, verify=False)
             response.raise_for_status()
-            print("Pedido confirmado com sucesso.")
+            print(f"{GREEN}Pedido {order_number} confirmado com sucesso na API.{RESET}")
+            return True  # Retorna True para indicar sucesso
         except requests.exceptions.RequestException as e:
-            print(f"Erro ao confirmar o estado do pedido: {e}")
-    if(config.pending_order == True or config.api_offline == True):
-        con, cur= open_database_connection()
+            print(f"{RED}Erro ao confirmar o estado do pedido na API: {e}{RESET}")
+            return False  # Retorna False para indicar falha
+    else:
+        # Fallback para o banco de dados local
+        con, cur = open_database_connection()
         if con is not None:
-            print(GREEN + "Conexão ao banco de dados bem-sucedida" + RESET)
-            cur.execute(" UPDATE pick_list SET state = 1 WHERE delivery_name = :order_number AND codigo_restaurante = :rest_code", {"order_number": order_number ,"rest_code": config.rest_code})
-            response = cur.fetchall()
-            return response
+            try:
+                print(GREEN + "Conexão ao banco de dados bem-sucedida" + RESET)
+                cur.execute(
+                    "UPDATE pick_list SET state = 1 WHERE delivery_name = :order_number AND codigo_restaurante = :rest_code",
+                    {"order_number": order_number, "rest_code": config.rest_code}
+                )
+                con.commit()
+                print(GREEN + f"Estado do pedido {order_number} atualizado no banco de dados local." + RESET)
+                return True  # Retorna True para indicar sucesso
+            except sqlite3.Error as e:
+                print(RED + f"Erro ao atualizar o estado do pedido no banco de dados: {e}{RESET}")
+                return False  # Retorna False para indicar falha
+            finally:
+                con.close()  # Certifique-se de fechar a conexão ao banco de dados
         else:
-            print(RED + "Erro ao abrir a base de dados" + RESET)
-            return None
-    
+            print(RED + "Erro ao abrir a base de dados local" + RESET)
+            return False  # Retorna False para indicar falha
+
 
 def confirm_order_api(order_number):
-    if(config.api_offline == False):
+    if teste_api_connection():
         url = f"{config.api_url}/pedido/confirmar"
         params = {'pedido': order_number, 'rest_code': config.rest_code}
         try:
@@ -143,94 +155,155 @@ def confirm_order_api(order_number):
             print(f"{GREEN}Pedido {order_number} confirmado com sucesso.{RESET}")
         except requests.exceptions.RequestException as e:
             print(f"{RED}Erro ao confirmar o pedido: {e}{RESET}")
-    if(config.pending_order == True or config.api_offline == True):
-        con, cur= open_database_connection()
+    else:
+        con, cur = open_database_connection()
         if con is not None:
             print(GREEN + "Conexão ao banco de dados bem-sucedida" + RESET)
-            cur.execute(" UPDATE pick_list SET confirmado = 1 WHERE id = (SELECT id FROM pick_list WHERE delivery_name = :order_number AND codigo_restaurante = :rest_code ORDER BY id DESC LIMIT 1", {"order_number": order_number ,"rest_code": config.rest_code})
-            response = cur.fetchall()
-            return response
+            cur.execute("UPDATE pick_list SET confirmado = 1 WHERE id = (SELECT id FROM pick_list WHERE delivery_name = :order_number AND codigo_restaurante = :rest_code ORDER BY id DESC LIMIT 1)", {"order_number": order_number, "rest_code": config.rest_code})
+            con.commit()
+            print(GREEN + "Pedido confirmado no banco de dados local." + RESET)
         else:
             print(RED + "Erro ao abrir a base de dados" + RESET)
-            return None
+
+import json  # Certifique-se de importar o módulo json
 
 def fetch_order_state(order_number):
-    if(config.api_offline == False):
+    if teste_api_connection():
         url = f"{config.api_url}/pedido/estado"
         params = {'pedido': order_number, 'rest_code': config.rest_code}
         try:
             response = requests.get(url, params=params, verify=False)
             response.raise_for_status()
-            return response.json()
+            data = response.json()
+            
+            # Verifica se a resposta da API está no formato esperado
+            if isinstance(data, dict) and 'state' in data and 'confirmado' in data:
+                print(f"{GREEN}Order state fetched successfully from API: {data}{RESET}")
+                return data
+            else:
+                print(f"{RED}Formato inesperado de resposta da API para estado do pedido: {data}{RESET}")
+                return None
         except requests.exceptions.RequestException as e:
-            print(f"{RED}Erro ao buscuro estado do pedido: {e}{RESET}")
+            print(f"{RED}Erro ao buscar estado do pedido: {e}{RESET}")
             return None
-    if(config.pending_order == True or config.api_offline == True):
+    else:
+        # Fallback para o banco de dados local
         con, cur = open_database_connection()
         if con is not None:
             print(GREEN + "Conexão ao banco de dados bem-sucedida" + RESET)
-            cur.execute("SELECT state, confirmado FROM pick_list WHERE delivery_name = :order_number AND codigo_restaurante = :rest_code ORDER BY id DESC LIMIT 1", {"order_number": order_number ,"rest_code": config.rest_code})
-            response = cur.fetchall()
-            
-            order_json = []
-            for responses in response:
-                order_json.append({
-                    "state": response[0],
-                    "confirmado": response[1],
-                })
-            return order_json
+            try:
+                cur.execute("SELECT state, confirmado FROM pick_list WHERE delivery_name = :order_number AND codigo_restaurante = :rest_code ORDER BY id DESC LIMIT 1", {"order_number": order_number ,"rest_code": config.rest_code})
+                response = cur.fetchall()
+                
+                # Verifica se há resultados e que os dados estão no formato esperado
+                if response and isinstance(response, list) and len(response) > 0:
+                    result = response[0]  # Acessa o primeiro resultado
+
+                    # Garante que o resultado tenha ao menos 2 elementos (state e confirmado)
+                    if len(result) >= 2:
+                        order_state = {
+                            "state": result[0],
+                            "confirmado": result[1]
+                        }
+                        print(f"{GREEN}Order state fetched successfully from DB: {order_state}{RESET}")
+                        return order_state
+                    else:
+                        print(f"{RED}Resultado inesperado ao buscar o estado do pedido: {response}{RESET}")
+                        return None
+                else:
+                    print(RED + "Nenhum estado de pedido encontrado no banco de dados local." + RESET)
+                    return None
+            except (sqlite3.Error, IndexError) as e:
+                print(RED + f"Erro ao acessar o banco de dados: {e}{RESET}")
+                return None
+            finally:
+                con.close()
         else:
             print(RED + "Erro ao abrir a base de dados" + RESET)
             return None
 
-
 def fetch_order_details(order_number):
-    if(config.api_offline == False):
+    if teste_api_connection():
         url = f"{config.api_url}/pedidos/detalhes"
         params = {'pedido': order_number, 'rest_code': config.rest_code}
         print(f"{GREEN}Fetching order details{RESET}")
-        print(order_number)
         try:
             response = requests.get(url, params=params, verify=False)
             response.raise_for_status()
-            print(response)
-            return response.json()
+            data = response.json()
+
+            # A API já retorna os dados no formato esperado
+            print(f"{GREEN}Order details fetched successfully from API: {data}{RESET}")
+            return data
+
         except requests.exceptions.RequestException as e:
-            print(f"{RED}Erro ao buscurdetalhes do pedido: {e}{RESET}")
-            return None
-    if(config.pending_order == True):
+            print(f"{RED}Erro ao buscar detalhes do pedido: {e}{RESET}")
+            return None  # Retorna None explicitamente se houver erro
+    else:
+        # Fallback para banco de dados local
         con, cur = open_database_connection()
         if con is not None:
             print(GREEN + "Conexão ao banco de dados bem-sucedida" + RESET)
-            cur.execute(" SELECT * FROM pick_list WHERE delivery_name = :order_number AND codigo_restaurante = :rest_code ORDER BY id DESC LIMIT 1", {"order_number": order_number ,"rest_code": config.rest_code})
-            response = cur.fetchall()
-            # Converte os resultados da consulta em um formato de lista de dicionários para compatibilidade
-            order_json = []
-            for responses in response:
-                order_json.append({
-                    "tipo": response[0],
-                    "name": response[1],
-                    "quantidade": response[2],
-                    "peso_produto": response[3],
-                    "peso": response[4],
-                    "peso_natura": response[5],
-                    "variancia": response[6]
-                })
+            try:
+                cur.execute("SELECT * FROM pick_list WHERE delivery_name = :order_number AND codigo_restaurante = :rest_code ORDER BY id DESC LIMIT 1", {"order_number": order_number, "rest_code": config.rest_code})
+                response = cur.fetchall()
+                
+                # Verifica se há resultados
+                if response and isinstance(response, list) and len(response) > 0:  # Verifica se há pelo menos um resultado
+                    order = response[0]
+                    
+                    # Verifica se o campo 'list' é uma string e faz o parsing; caso contrário, deixa como está
+                    if len(order) > 2 and isinstance(order[2], str):
+                        try:
+                            list_data = json.loads(order[2])  # Faz o parsing de 'list' se for string JSON
+                        except json.JSONDecodeError as e:
+                            print(f"{RED}Erro ao analisar JSON no campo 'list': {e}{RESET}")
+                            list_data = []  # Define como lista vazia em caso de erro de parsing
+                    else:
+                        list_data = order[2] if len(order) > 2 and isinstance(order[2], list) else []  # Mantém o valor se já for uma lista
 
-            return order_json
+                    # Monta um dicionário estruturado para retornar, garantindo que ele tenha o mesmo formato que o retorno da API
+                    order_json = {
+                        "id": order[0] if len(order) > 0 and order[0] is not None else None,
+                        "delivery_name": order[1] if len(order) > 1 and order[1] is not None else '',
+                        "list": list_data,  # Usa a lista processada
+                        "peso_produto": order[3] if len(order) > 3 and order[3] is not None else '',
+                        "peso": order[4] if len(order) > 4 and order[4] is not None else 0,
+                        "peso_natura": order[5] if len(order) > 5 and order[5] is not None else 0,
+                        "variancia": order[6] if len(order) > 6 and order[6] is not None else 0,
+                        "pick_list_file": order[7] if len(order) > 7 and order[7] is not None else '',
+                        "state": order[8] if len(order) > 8 and order[8] is not None else 0,
+                        "confirmado": order[9] if len(order) > 9 and order[9] is not None else 0,
+                        "pendente": order[10] if len(order) > 10 and order[10] is not None else 0,
+                        "codigo_restaurante": order[11] if len(order) > 11 and order[11] is not None else None,
+                        "time_stamp": order[12] if len(order) > 12 and order[12] is not None else ''
+                    }
+                    print(f"{GREEN}Order details fetched and standardized from DB: {order_json}{RESET}")
+                    return order_json  # Retorna o dicionário estruturado
+                else:
+                    print(RED + "Nenhum detalhe de pedido encontrado no banco de dados local ou estrutura inesperada." + RESET)
+                    return None
+            except (sqlite3.Error, json.JSONDecodeError) as e:
+                print(RED + f"Erro ao acessar o banco de dados ou ao analisar JSON: {e}{RESET}")
+                return None
+            finally:
+                con.close()
         else:
             print(RED + "Erro ao abrir a base de dados" + RESET)
             return None
 
     
-def send_weight_data_to_api(pick_list_id, peso_estimado, peso_real, photo):
+def send_weight_data_to_api(pick_list_id, peso_estimado, peso_real, photo, start_time_stamp, end_time_stamp, tentativas):
     if(config.api_offline == False):
         url = f"{config.api_url}/pesagem"  # Endpoint da API para inserir dados na tabela pesagem
         payload = {
             "pick_list_id": pick_list_id,
             "peso_estimado": peso_estimado,
             "peso_real": peso_real,
-            "photo": photo
+            "photo": photo,
+            "start_time_stamp": start_time_stamp,
+            "end_time_stamp": end_time_stamp,
+            "tentativas": tentativas
         }
         try:
             response = requests.post(url, json=payload, verify=False)  # Enviando o payload como JSON
@@ -287,7 +360,7 @@ def create_button(nr_pedido, row_counter, row_number_view):
         print(f"{CYAN}Creating button for pedido: {nr_pedido}, row_counter: {row_counter}, row_number_view: {row_number_view}{RESET}")
         row = [sg.pin(
             sg.Col([[
-                sg.Button("X", border_width=0, visible=True, key=('-DEL-', nr_pedido), button_color=("white", "red")),
+                sg.Button("X", size=(2, 1),border_width=0, visible=True, key=('-DEL-', nr_pedido), button_color=("white", "red")),
                 sg.Button(nr_pedido, size=(18, 2), font=("Arial Bold", 18), key=('-DESC-', nr_pedido)),
                 sg.Text(f'{row_number_view}', key=('-STATUS-', row_counter))
             ]], key=('-ROW-', nr_pedido)
@@ -388,12 +461,29 @@ class SetInterval:
         self.stopEvent.set()
 
 # Main Logic Functions
+import json  # Certifique-se de importar o módulo json
+
 def process_order(window, order, serial_scale, camera, id):
     global row_counter, row_number_view
     print(f"{CYAN}Processing order: {order}{RESET}")
 
     window['-Pedido-'].update(order['delivery_name'])
-    order_json = json.loads(order['list'])
+
+    # Verifica se 'list' já é uma lista; caso contrário, faz o parsing JSON
+    if isinstance(order['list'], str):
+        try:
+            order_json = json.loads(order['list'])
+        except json.JSONDecodeError as e:
+            print(f"{RED}Erro ao analisar JSON no campo 'list': {e}{RESET}")
+            log_error(f"Erro ao analisar JSON no campo 'list': {e}")
+            order_json = []  # Define como lista vazia em caso de erro de parsing
+    elif isinstance(order['list'], list):
+        order_json = order['list']
+    else:
+        print(f"{RED}Formato inesperado para o campo 'list'.{RESET}")
+        log_error("Formato inesperado para o campo 'list'.")
+        order_json = []
+
     peso, variancia = calculate_order_weight(window, order_json)
 
     # Atualiza a interface com o peso estimado calculado
@@ -415,9 +505,6 @@ def calculate_order_weight(window, order_json):
     found_bag = False
     found_ketchup = False
     found_both = False
-
-    if(config.api_offline == True or config.pending_order == True):
-        pass
 
     for item in order_json:
         if item["tipo"] == "Molho":
@@ -556,14 +643,32 @@ def capture_image(camera, order_number, window):
         print(e)
         return None  # Retorna None em caso de exceção
 
+def get_string_time():
+    current_time = datetime.datetime.now()
+    time_string = current_time.strftime('%Y%m%d_%Hh%Mm%Ss')
+    return time_string
 
 def process_weighing(window, serial_scale, estimated_weight, order_number, camera, id):
     global weighing_attempts
+    
+    # Fetch order details
+    order = fetch_order_details(order_number)
+    
+    # Extract id and time_stamp from the fetched order details
+    order_id = order['id']  # Captura o id do pedido
+    start_time_stamp = order['time_stamp']  # Captura o time_stamp do pedido
+    end_time_stamp = get_string_time()
+    
+    print(order_id)  # Imprime o id
+    print(start_time_stamp)  # Imprime o time_stamp
+    print(end_time_stamp)
+
     print(f"{CYAN}Processing weighing, estimated weight: {estimated_weight}{RESET}")
     weights = []
     image_file = None  # Variável para armazenar o caminho da imagem
+
     # Tentar ler os dados da balança por até 10 vezes
-    for _ in range(10):
+    for _ in range(5):
         time.sleep(0.2)
         serial_scale.flushInput()
         scale_data = serial_scale.readline().decode('utf-8').strip()
@@ -571,11 +676,11 @@ def process_weighing(window, serial_scale, estimated_weight, order_number, camer
 
         try:
             # Verifica se o dado é do formato esperado e extrai o valor em kg
-            if scale_data.startswith('+'):
+            if scale_data.startswith('ST'):
                 # Extrai a parte do peso em kg (posição 7 até 14)
-                weight_kg = float(scale_data[3:8])
+                weight_kg = float(scale_data[7:14])
                 weight_grams = int(weight_kg * 1000)  # Converte para gramas
-                print(f"{CYAN}Processed weight: {weight_grams}{RESET}")  # Verificuro peso processado
+                print(f"{CYAN}Processed weight: {weight_grams}{RESET}")  # Verifica o peso processado
                 if weight_grams > 0:
                     weights.append(weight_grams)
         except ValueError as ve:
@@ -584,7 +689,7 @@ def process_weighing(window, serial_scale, estimated_weight, order_number, camer
         
         if len(weights) >= 3:
             break
-
+    weighing_try = 0
     if weights:
         actual_weight = weights[-1]  # Pega o último valor válido de peso
         image_file = capture_image(camera, order_number, window)
@@ -594,20 +699,25 @@ def process_weighing(window, serial_scale, estimated_weight, order_number, camer
         
         # Se o desvio estiver dentro da faixa aceitável, o pedido deve ser confirmado
         if -60 <= deviation <= 100:
+            weighing_try += 1
             print(f"{CYAN}Peso dentro da faixa aceitável. Confirmando pedido {order_number}.{RESET}")
             update_confirmation_status(window, deviation)
             confirm_order_api(order_number)  # Confirmar o pedido na API
             
             # Enviar os dados de pesagem para a API
             send_weight_data_to_api(
-                pick_list_id=id,  # Supondo que `order_number` é o `pick_list_id`
+                pick_list_id=order_id,  # Utiliza o id do pedido
                 peso_estimado=estimated_weight,
                 peso_real=actual_weight,
-                photo=image_file
+                photo=image_file,
+                start_time_stamp=start_time_stamp,
+                end_time_stamp=end_time_stamp,
+                tentativas=weighing_try
             )
             
             window[('-ROW-', order_number)].update(visible=False)  # Remove o pedido da tela
         else:
+            weighing_try += 1
             print(f"{CYAN}Peso fora da faixa aceitável.{RESET}")
             update_confirmation_status(window, deviation)
             # Incrementar o contador de tentativas para o pedido
@@ -616,24 +726,32 @@ def process_weighing(window, serial_scale, estimated_weight, order_number, camer
             else:
                 weighing_attempts[order_number] = 1
 
-            # Verificurse o limite de tentativas foi atingido
+            # Verificarse o limite de tentativas foi atingido
             if weighing_attempts[order_number] >= 2:
-                print(f"{CYAN}Pedido {order_number} removido após 4 tentativas falhadas.{RESET}")
+                print(f"{CYAN}Pedido {order_number} removido após 2 tentativas falhadas.{RESET}")
                 window[('-ROW-', order_number)].update(visible=False)
                 del weighing_attempts[order_number]  # Remover o pedido das tentativas
             
             send_weight_data_to_api(
-                pick_list_id=id,  # Supondo que `order_number` é o `pick_list_id`
+                pick_list_id=order_id,  # Utiliza o id do pedido
                 peso_estimado=estimated_weight,
                 peso_real=actual_weight,
-                photo=image_file
+                photo=image_file,
+                start_time_stamp=start_time_stamp,
+                end_time_stamp=end_time_stamp,
+                tentativas=weighing_try
             )
             
     else:
-        print(f"{CYAN}Peso instável ou 0{RESET}")
-        window['-Peso_r-'].update("Instável")
-        window['-Confirmar-'].update('\n Pedido instável ou a 0', background_color="gray60")
-
+        if estimated_weight <= 7:
+            window['-Peso_r-'].update("n/a")
+            window['-Confirmar-'].update('\n Pedido não aplicável à balança', background_color="gray60")
+            window[('-ROW-', order_number)].update(visible=False)
+        else:
+            print(f"{CYAN}Peso instável ou 0{RESET}")
+            window['-Peso_r-'].update("Instável")
+            window['-Confirmar-'].update('\n Pedido instável ou a 0', background_color="gray60")
+            
 def save_image(image_file, order_number):
     timestamp = datetime.datetime.now().strftime('%Y%m%d_%Hh%Mm%Ss')
     saved_filename = f"{config.img_path}{timestamp}_{order_number}_confirmed.png"
@@ -657,9 +775,25 @@ def is_order_confirmed(order_number):
         print(f"{RED}Order state could not be fetched for: {order_number}{RESET}")
         return False
 
-    confirmed = order_state.get('state') == 1 and order_state.get('confirmado') == 1
-    print(f"{CYAN}Order confirmed: {confirmed}{RESET}")
-    return confirmed
+    # Verifica se 'order_state' é um dicionário e contém as chaves esperadas
+    if isinstance(order_state, dict):
+        state = order_state.get('state')
+        confirmado = order_state.get('confirmado')
+
+        # Garante que 'state' e 'confirmado' sejam do tipo certo para comparação
+        if isinstance(state, (int, str)) and isinstance(confirmado, (int, str)):
+            # Converte para inteiros se forem strings para evitar comparações incorretas
+            confirmed = int(state) == 1 and int(confirmado) == 1
+            print(f"{CYAN}Order confirmed: {confirmed}{RESET}")
+            return confirmed
+        else:
+            print(f"{RED}Formato inesperado para 'state' ou 'confirmado': {order_state}{RESET}")
+            log_error(f"Formato inesperado para 'state' ou 'confirmado': {order_state}")
+            return False
+    else:
+        print(f"{RED}Formato de dados inesperado ao verificar o estado do pedido: {order_state}{RESET}")
+        log_error(f"Formato de dados inesperado ao verificar o estado do pedido: {order_state}")
+        return False
 
 def verped(window, serial_scale, camera):
     global row_counter, row_number_view, verped_running  # Acessando a flag global
@@ -677,11 +811,15 @@ def verped(window, serial_scale, camera):
     try:
         time.sleep(3)  # Simula o tempo de espera de um pedido
         order = fetch_last_order()
-        if order:
-            if(config.api_offline == True or config.pending_order == True):
-                nr_pedido = order[1]
-            else:
+        if order:  # Verifique se order não é None e tem o formato esperado
+            if isinstance(order, list) and len(order) > 0 and isinstance(order[0], dict):  # Para o caso de DB local
+                nr_pedido = order[0]['delivery_name']
+            elif isinstance(order, dict) and 'delivery_name' in order:  # Para o caso de API
                 nr_pedido = order['delivery_name']
+            else:
+                print(f"{RED}Formato inesperado de pedido: {order}{RESET}")
+                return  # Não continue se o formato estiver errado
+
             print(f"{CYAN}New order found: {nr_pedido}{RESET}")
             
             # Verificurse o pedido já existe na interface
@@ -697,6 +835,8 @@ def verped(window, serial_scale, camera):
                 row_number_view += 1
                 window.extend_layout(window['-ROW_PANEL-'], [create_button(nr_pedido, row_counter, row_number_view)])
                 update_order_state(nr_pedido)
+        else:
+            print(f"{CYAN}Nenhum pedido pendente encontrado.{RESET}")
 
     finally:
         # Defina a flag como False após a execução ser concluída
@@ -709,7 +849,7 @@ def reset_orders(window):
     print(f"{CYAN}Resetting orders in the database and UI{RESET}")
 
     window['-Confirmar-'].update('\n Por favor aguarde! \n Apagando os pedidos...', background_color="orange", text_color="white")
-    window.refresh()  # Atualiza a interface imediatament
+    window.refresh()  # Atualiza a interface imediatamente
 
     # Cancelar o intervalo anterior
     if funcpri is not None:
@@ -760,22 +900,47 @@ def handle_order(window, order_number, serial_scale, camera):
     global funcpri  # Declarar funcpri como variável global
     print(f"{CYAN}Handling order: {order_number}{RESET}")
     window['-Confirmar-'].update('\n Por favor, aguarde! \n Pesagem em andamento...', background_color="orange", text_color="white")
-    window.refresh()  # Atualiza a interface imediatament
+    window.refresh()  # Atualiza a interface imediatamente
     if funcpri is not None:
         funcpri.cancel()
     clear_display(window)
+    
     order = fetch_order_details(order_number)
-    if(config.api_offline == True or config.pending_order == True):
-        id = order[0]
+    if order is None:
+        print(f"{RED}Erro: Detalhes do pedido não encontrados para o pedido {order_number}.{RESET}")
+        log_error(f"Detalhes do pedido não encontrados para o pedido {order_number}.")
+        return  # Adicione um retorno para parar o processamento
+
+    # Verificar se o retorno é um dicionário e contém as chaves necessárias
+    if isinstance(order, dict):
+        if config.api_offline or config.pending_order:
+            if 'id' in order:
+                id = order["id"]
+            else:
+                print(f"{RED}Erro: 'id' não encontrado nos detalhes do pedido {order_number}.{RESET}")
+                log_error(f"'id' não encontrado nos detalhes do pedido {order_number}.")
+                return  # Adicione um retorno para parar o processamento
+        else:
+            if 'id' in order and 'delivery_name' in order:
+                id = order['id']
+            else:
+                print(f"{RED}Formato de dados de pedido inesperado: {order}{RESET}")
+                log_error(f"Formato de dados de pedido inesperado: {order}")
+                return  # Adicione um retorno para parar o processamento
     else:
-        id = order['id']
-    if order:
-        process_order(window, order, serial_scale, camera, id)
-        if is_order_confirmed(order_number):
-            global row_number_view
-            row_number_view -= 1
-            window[('-ROW-', order_number)].update(visible=False)
+        print(f"{RED}Formato de dados inesperado para o pedido {order_number}: {order}{RESET}")
+        log_error(f"Formato de dados inesperado para o pedido {order_number}: {order}")
+        return  # Adicione um retorno para parar o processamento
+
+    process_order(window, order, serial_scale, camera, id)
+    
+    if is_order_confirmed(order_number):
+        global row_number_view
+        row_number_view -= 1
+        window[('-ROW-', order_number)].update(visible=False)
+    
     funcpri = SetInterval(3, lambda: verped(window, serial_scale, camera))
+
 
 def clear_display(window):
     print(f"{CYAN}Clearing the display{RESET}")
