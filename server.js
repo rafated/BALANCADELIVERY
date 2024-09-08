@@ -283,12 +283,12 @@ app.post('/api/pesagem',
             return res.status(400).json({ errors: errors.array() });
         }
 
-        const { pick_list_id, peso_estimado, peso_real, photo} = req.body;
+        const { pick_list_id, peso_estimado, peso_real, photo, start_time_stamp, end_time_stamp, tentativas} = req.body;
 
         const sql = `
-            INSERT INTO pesagem (pick_list_id, peso_estimado, peso_real, photo) 
-            VALUES (?, ?, ?, ?)`;
-        const params = [pick_list_id, peso_estimado, peso_real, photo];
+            INSERT INTO pesagem (pick_list_id, peso_estimado, peso_real, photo, start_time_stamp, end_time_stamp, tentativas) 
+            VALUES (?, ?, ?, ?, ?, ?, ?)`;
+        const params = [pick_list_id, peso_estimado, peso_real, photo, start_time_stamp, end_time_stamp, tentativas];
 
         db.run(sql, params, function(err) {
             if (err) {
