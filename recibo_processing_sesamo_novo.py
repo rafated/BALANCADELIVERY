@@ -389,7 +389,7 @@ def main():
                         "estado":estadoinicial,
                         "pendente": pendente,
                         "codigo_restaurante": codigo_restaurante,
-                        "time_stmap": time_stmap})
+                        "time_stamp": time_stamp})
                     con.commit()
                     print(GREEN + "PickList gravada com sucesso no banco de dados." + RESET)
                 else:
