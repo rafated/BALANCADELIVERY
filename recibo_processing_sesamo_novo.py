@@ -364,7 +364,8 @@ def main():
                     "file_name": file_name,
                     "estado": estadoinicial,
                     "pendente": 0,
-                    "codigo_restaurante": codigo_restaurante
+                    "codigo_restaurante": codigo_restaurante,
+                    "time_stamp": time_stamp
                 }
                 response = requests.post(url, json=data, verify=False)  # Verify False for development only
 
