@@ -378,19 +378,25 @@ def main():
                 config.set_api_offline()
                 #Declara que um pedido será inderido na base de dados local, oque 
                 config.set_pending_order_true()
-                pendente = 0
+                pendente = 1
 
                 #Chamada da função para conexão com o banco de dados
                 con, cur, estadoinicial = open_database_connection()
                 if con is not None:
-                    cur.execute("INSERT INTO pick_list (delivery_name, list, pick_list_file, state, confirmado, pendente, codigo_restaurante, time_stamp) VALUES (:numero_pedido, :list, :file_name, :estado, :estado, :pendente, :codigo_restaurante_, time_stamp) VALUES (:",
-                        {"numero_pedido": codigo_delivery,
-                        "list": str(jsonStr), 
-                        "file_name": file_name, 
-                        "estado":estadoinicial,
+                    cur.execute(
+                    """
+                    INSERT INTO pick_list (delivery_name, list, pick_list_file, state, confirmado, pendente, codigo_restaurante, time_stamp)
+                    VALUES (:numero_pedido, :list, :file_name, :estado, :estado, :pendente, :codigo_restaurante, :time_stamp)
+                    """,
+                    {
+                        "numero_pedido": codigo_delivery,
+                        "list": str(jsonStr),
+                        "file_name": file_name,
+                        "estado": estadoinicial,
                         "pendente": pendente,
                         "codigo_restaurante": codigo_restaurante,
-                        "time_stamp": time_stamp})
+                        "time_stamp": time_stamp,
+                    })
                     con.commit()
                     print(GREEN + "PickList gravada com sucesso no banco de dados." + RESET)
                 else:
@@ -411,7 +417,7 @@ def main():
             time.sleep(2)
             os.rename(os.path.join(config.temp_file_dir, file_name), os.path.join(config.file_dir_erro, file_name))
             print(RED + "Erro no processamento da PickList." + RESET)
-            print('f{e}')
+            print(f'{e}')
             # break    
         
         if(config.api_offline == True):
