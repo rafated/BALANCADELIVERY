@@ -56,13 +56,13 @@ def print_confirmation(order_number):
 
         printer.write(endpoint, b' Pedido pesado e confirmado\n\n\n\n')
         printer.write(endpoint, b'electronicamente por um sistema\n\n\n\n')
-        printer.write(endpoint, b'de pesagem com balanca e imagem.\n\n\n\n')
+        printer.write(endpoint, b'de pesagem com balan\x87a e imagem.\n\n\n\n')
         
         # Numero do pedido
     
         printer.write(endpoint, double_height_width)  # Large size
         printer.write(endpoint, bold_on)
-        printer.write(endpoint, b'\n\n\n\n\n\n Pedido numero:')
+        printer.write(endpoint, b'\n\n\n\n\n\n Pedido n\xA3mero:')
         printer.write(endpoint, message.encode('utf-8'))
         printer.write(endpoint, normal_size)  # Normal size
         printer.write(endpoint, bold_off)
