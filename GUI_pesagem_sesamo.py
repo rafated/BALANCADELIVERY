@@ -86,7 +86,7 @@ def fetch_last_order():
     # Fallback para o banco de dados local
     print(GREEN + "Usando o banco de dados local para buscar o último pedido." + RESET)
     con, cur = open_database_connection()
-    if con is not None:
+    if con is not None or config.pending_order == True:
         cur.execute("SELECT * FROM pick_list WHERE state = 0 AND codigo_restaurante = :rest_code ORDER BY id DESC LIMIT 1", {"rest_code": config.rest_code})
         response = cur.fetchall()
         if response:  # Verifica se há resultados na consulta
@@ -125,7 +125,7 @@ def update_order_state(order_number):
     else:
         # Fallback para o banco de dados local
         con, cur = open_database_connection()
-        if con is not None:
+        if con is not None or config.pending_order == True:
             try:
                 print(GREEN + "Conexão ao banco de dados bem-sucedida" + RESET)
                 cur.execute(
@@ -157,7 +157,7 @@ def confirm_order_api(order_number):
             print(f"{RED}Erro ao confirmar o pedido: {e}{RESET}")
     else:
         con, cur = open_database_connection()
-        if con is not None:
+        if con is not None or config.pending_order == True:
             print(GREEN + "Conexão ao banco de dados bem-sucedida" + RESET)
             cur.execute("UPDATE pick_list SET confirmado = 1 WHERE id = (SELECT id FROM pick_list WHERE delivery_name = :order_number AND codigo_restaurante = :rest_code ORDER BY id DESC LIMIT 1)", {"order_number": order_number, "rest_code": config.rest_code})
             con.commit()
@@ -189,7 +189,7 @@ def fetch_order_state(order_number):
     else:
         # Fallback para o banco de dados local
         con, cur = open_database_connection()
-        if con is not None:
+        if con is not None or config.pending_order == True:
             print(GREEN + "Conexão ao banco de dados bem-sucedida" + RESET)
             try:
                 cur.execute("SELECT state, confirmado FROM pick_list WHERE delivery_name = :order_number AND codigo_restaurante = :rest_code ORDER BY id DESC LIMIT 1", {"order_number": order_number ,"rest_code": config.rest_code})
@@ -242,7 +242,7 @@ def fetch_order_details(order_number):
     else:
         # Fallback para banco de dados local
         con, cur = open_database_connection()
-        if con is not None:
+        if con is not None or config.pending_order == True:
             print(GREEN + "Conexão ao banco de dados bem-sucedida" + RESET)
             try:
                 cur.execute("SELECT * FROM pick_list WHERE delivery_name = :order_number AND codigo_restaurante = :rest_code ORDER BY id DESC LIMIT 1", {"order_number": order_number, "rest_code": config.rest_code})
@@ -311,19 +311,54 @@ def send_weight_data_to_api(pick_list_id, peso_estimado, peso_real, photo, start
             print(f"{GREEN}Dados de pesagem enviados com sucesso: {response.json()}{RESET}")
         except requests.exceptions.RequestException as e:
             print(f"{RED}Erro ao enviar dados de pesagem para a API: {e}{RESET}")
-    if(config.pending_order == True):
-        con, cur= open_database_connection()
+    else:
+        con, cur = open_database_connection()
+        cur.execute("SELECT time_stamp FROM pick_list WHERE id = :pick_list_id", {"pick_list_id": pick_list_id})
+        response = cur.fetchall()
         if con is not None:
             print(GREEN + "Conexão ao banco de dados bem-sucedida" + RESET)
-            cur.execute("INSERT INTO pesagem (pick_list_id, peso_estimado, peso_real) VALUES (:pick_list_id, :peso_estimado, :peso_real)", {"pick_list_id": pick_list_id ,"peso_estimado": peso_estimado, "peso_real": peso_real})
-            con.commit()
-            print(GREEN + "Dados de pesagem adicionados ao banco de dados." + RESET)
+
+            # Primeiro, buscamos o timestamp inicial
+            cur.execute("SELECT time_stamp FROM pick_list WHERE id = :pick_list_id", {"pick_list_id": pick_list_id})
+            response = cur.fetchone()  # Use fetchone() para pegar um único resultado
+            
+            # Verifique se um resultado foi encontrado
+            if response:
+                start_time_stamp = response[0]  # Extrai o valor do timestamp
+                print("O time stamp é:", start_time_stamp)
+            else:
+                print(RED + "Nenhum registro encontrado para o ID fornecido." + RESET)
+                start_time_stamp = None 
+
+            # Só insira na tabela 'pesagem' se o timestamp inicial foi encontrado
+            if start_time_stamp is not None:
+                try:
+                    cur.execute(
+                        """
+                        INSERT INTO pesagem (pick_list_id, peso_estimado, peso_real, start_time_stamp, end_time_stamp, tentativas)
+                        VALUES (:pick_list_id, :peso_estimado, :peso_real, :start_time_stamp, :end_time_stamp, :tentativas)
+                        """,
+                        {
+                            "pick_list_id": pick_list_id,
+                            "peso_estimado": peso_estimado,
+                            "peso_real": peso_real,
+                            "start_time_stamp": start_time_stamp,
+                            "end_time_stamp": end_time_stamp,
+                            "tentativas": tentativas
+                        }
+                    )
+                    con.commit()
+                    print(GREEN + "Dados de pesagem adicionados ao banco de dados." + RESET)
+                except sqlite3.Error as e:
+                    print(RED + f"Erro ao executar comando SQL: {e}" + RESET)
+            else:
+                print(RED + "Falha ao inserir dados na tabela 'pesagem' devido à ausência de timestamp inicial." + RESET)
         else:
             print(RED + "Erro ao abrir a base de dados" + RESET)
 
 def clear_database_orders():
     print("Clearing orders in the database via API")
-    if(config.api_offline == False or config.pending_order == False):
+    if(config.api_offline == False):
         url = f"{config.api_url}/pedidos/limpar"
         try:
             response = requests.post(url, verify=False)
@@ -333,7 +368,7 @@ def clear_database_orders():
             print(f"{RED}Erro ao limpar pedidos na API: {e}{RED}")
     if(config.pending_order == True):
         con, cur= open_database_connection()
-        if con is not None:
+        if con is not None or config.pending_order == True:
             print(GREEN + "Conexão ao banco de dados bem-sucedida" + RESET)
             cur.execute("UPDATE pick_list SET confirmado = 1, state = 1 WHERE (confirmado = 0 OR state = 0) AND codigo_restaurante = :rest_code", {"rest_code": config.rest_code})
             con.commit()
@@ -650,7 +685,8 @@ def get_string_time():
 
 def process_weighing(window, serial_scale, estimated_weight, order_number, camera, id):
     global weighing_attempts
-    
+    weighing_try = 0
+
     # Fetch order details
     order = fetch_order_details(order_number)
     
@@ -689,7 +725,6 @@ def process_weighing(window, serial_scale, estimated_weight, order_number, camer
         
         if len(weights) >= 3:
             break
-    weighing_try = 0
     if weights:
         actual_weight = weights[-1]  # Pega o último valor válido de peso
         image_file = capture_image(camera, order_number, window)
@@ -751,7 +786,7 @@ def process_weighing(window, serial_scale, estimated_weight, order_number, camer
             print(f"{CYAN}Peso instável ou 0{RESET}")
             window['-Peso_r-'].update("Instável")
             window['-Confirmar-'].update('\n Pedido instável ou a 0', background_color="gray60")
-            
+                
 def save_image(image_file, order_number):
     timestamp = datetime.datetime.now().strftime('%Y%m%d_%Hh%Mm%Ss')
     saved_filename = f"{config.img_path}{timestamp}_{order_number}_confirmed.png"
