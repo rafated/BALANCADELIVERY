@@ -1,6 +1,8 @@
 
 import usb.core
 import usb.util
+from datetime import datetime
+
 
 
 #README
@@ -30,32 +32,46 @@ align_right = b'\x1b\x61\x02'    # Right align
 full_cut = b'\x1d\x56\x00'   # Full cut
 partial_cut = b'\x1d\x56\x01'  # Partial cut
 
-if printer is None:
-    raise ValueError("Printer not found.")
 
-message = "UB42F\n\n\n\n\n"
 
-# Assuming the printer is already configured by Windows, try writing directly
-try:
-    # Typically endpoint 0x01 is used for output to the printer
-    endpoint = 1
-
-    # Initialize the printer
-    printer.write(endpoint, b'\x1b\x40')
-
-    printer.write(endpoint, align_center)
-    printer.write(endpoint, b'Pedido pesado e confirmado\n\n')
-
-    # Numero do pedido
-
-    printer.write(endpoint, double_height_width)  # Large size
-    printer.write(endpoint, bold_on)
-    printer.write(endpoint, message.encode('utf-8'))
-    printer.write(endpoint, normal_size)  # Normal size
-    printer.write(endpoint, bold_off)
-
-    # Cut the paper
-    printer.write(endpoint, b'\x1d\x56\x01')
+def print_confirmation(order_number):
+    if printer is None:
+        raise ValueError("Printer not found.")
     
-except usb.core.USBError as e:
-    print(f"Could not write to the printer: {e}")
+    message = str(order_number)
+    
+    now = datetime.now()
+    dt_string = now.strftime("%d/%m/%Y %H:%M:%S")
+    print("date and time =", dt_string)
+    
+    # Assuming the printer is already configured by Windows, try writing directly
+    try:
+        # Typically endpoint 0x01 is used for output to the printer
+        endpoint = 1
+    
+        # Initialize the printer
+        printer.write(endpoint, b'\x1b\x40')
+    
+        printer.write(endpoint, align_center)
+        printer.write(endpoint, b'Pedido pesado e confirmado\n\n')
+        printer.write(endpoint, b'electronicamente por um sistema\n\n')
+        printer.write(endpoint, b'de pesagem com balança e imagem.\n\n')
+        
+        # Numero do pedido
+    
+        printer.write(endpoint, double_height_width)  # Large size
+        printer.write(endpoint, bold_on)
+        printer.write(endpoint, b'Pedido número:' message.encode('utf-8'))
+        printer.write(endpoint, normal_size)  # Normal size
+        printer.write(endpoint, bold_off)
+
+        printer.write(endpoint, align_left)
+        printer.write(endpoint, b'\n\n\ Validado a:')
+        printer.write(endpoint, dt_string.encode('utf-8'))
+        printer.write(endpoint, b'\n\n\\n\n')
+    
+        # Cut the paper
+        printer.write(endpoint, b'\x1d\x56\x01')
+        
+    except usb.core.USBError as e:
+        print(f"Could not write to the printer: {e}")
