@@ -766,16 +766,15 @@ def process_weighing(window, serial_scale, estimated_weight, order_number, camer
                 print(f"{CYAN}Pedido {order_number} removido após 2 tentativas falhadas.{RESET}")
                 window[('-ROW-', order_number)].update(visible=False)
                 del weighing_attempts[order_number]  # Remover o pedido das tentativas
-            
-            send_weight_data_to_api(
-                pick_list_id=order_id,  # Utiliza o id do pedido
-                peso_estimado=estimated_weight,
-                peso_real=actual_weight,
-                photo=image_file,
-                start_time_stamp=start_time_stamp,
-                end_time_stamp=end_time_stamp,
-                tentativas=weighing_try
-            )
+                send_weight_data_to_api(
+                    pick_list_id=order_id,  # Utiliza o id do pedido
+                    peso_estimado=estimated_weight,
+                    peso_real=actual_weight,
+                    photo=image_file,
+                    start_time_stamp=start_time_stamp,
+                    end_time_stamp=end_time_stamp,
+                    tentativas=weighing_try
+                )
             
     else:
         if estimated_weight <= 7:
