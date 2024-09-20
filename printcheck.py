@@ -39,7 +39,7 @@ def print_confirmation(order_number):
     
     message = str(order_number)
     
-    now = datetime.now()
+    now = datetime.datetime.now()
     dt_string = now.strftime("%d/%m/%Y %H:%M:%S")
     print("date and time =", dt_string)
     
