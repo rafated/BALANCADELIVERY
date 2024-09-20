@@ -33,6 +33,25 @@ verped_running = False
 funcpri = None
 verped_lock = threading.Lock()  # Adiciona um lock para controle de execução
 
+printer = usb.core.find(idVendor=0x04b8, idProduct=0x0202)
+
+normal_size = b'\x1b\x21\x00'    # Normal size
+double_height = b'\x1b\x21\x10'  # Double height
+double_width = b'\x1b\x21\x20'   # Double width
+double_height_width = b'\x1b\x21\x30'  # Double height and width
+bold_on = b'\x1b\x45\x01'        # Bold on
+bold_off = b'\x1b\x45\x00'       # Bold off
+underline_on = b'\x1b\x2d\x01'   # Underline on
+underline_off = b'\x1b\x2d\x00'  # Underline off
+align_center = b'\x1b\x61\x01'   # Center align
+align_left = b'\x1b\x61\x00'     # Left align
+align_right = b'\x1b\x61\x02'    # Right align
+
+# Define paper cut commands
+full_cut = b'\x1d\x56\x00'   # Full cut
+partial_cut = b'\x1d\x56\x01'  # Partial cut
+
+
 def teste_api_connection():
     print(GREEN + "Testando conexão à API" + RESET)
     try:
@@ -529,7 +548,7 @@ def process_order(window, order, serial_scale, camera, id):
     if peso > 1300:
         peso += 14
 
-    capture_image(camera, order['delivery_name'], window)
+    capture_image(camera, order['id'], window)
 
     process_weighing(window, serial_scale, peso, order['delivery_name'], camera, id)
 
@@ -729,7 +748,8 @@ def process_weighing(window, serial_scale, estimated_weight, order_number, camer
             break
     if weights:
         actual_weight = weights[-1]  # Pega o último valor válido de peso
-        image_file = capture_image(camera, order_number, window)
+        image_file = capture_image(camera, order_id, window)
+        print(image_file)
         deviation = actual_weight - estimated_weight
         print(f"Actual weight: {actual_weight}, Deviation: {deviation}")
         window['-Peso_r-'].update(str(actual_weight))
@@ -788,7 +808,57 @@ def process_weighing(window, serial_scale, estimated_weight, order_number, camer
             print(f"{CYAN}Peso instável ou 0{RESET}")
             window['-Peso_r-'].update("Instável")
             window['-Confirmar-'].update('\n Pedido instável ou a 0', background_color="gray60")
-                
+
+
+def print_confirmation(order_number):
+    if printer is None:
+        raise ValueError("Printer not found.")
+    
+    message = str(order_number)
+    
+    now = datetime.datetime.now()
+    dt_string = now.strftime("%d/%m/%Y %H:%M:%S")
+    print("date and time =", dt_string)
+    
+    # Assuming the printer is already configured by Windows, try writing directly
+    try:
+        # Typically endpoint 0x01 is used for output to the printer
+        endpoint = 1
+    
+        # Initialize the printer
+
+        printer.write(endpoint, b'\x1b\x32\x20')
+    
+        printer.write(endpoint, align_center)
+
+        printer.write(endpoint, b' Pedido pesado e confirmado\n\n\n\n')
+        printer.write(endpoint, b'electronicamente por um sistema\n\n\n\n')
+        printer.write(endpoint, b'de pesagem com balan\x87a e imagem.\n\n\n\n')
+        
+        # Numero do pedido
+    
+        printer.write(endpoint, double_height_width)  # Large size
+        printer.write(endpoint, bold_on)
+        printer.write(endpoint, b'\n\n\n\n\n\n Pedido n\xA3mero:')
+        printer.write(endpoint, message.encode('utf-8'))
+        printer.write(endpoint, normal_size)  # Normal size
+        printer.write(endpoint, bold_off)
+
+        printer.write(endpoint, align_left)
+        printer.write(endpoint, b'\n\n\n\n\n\n\n Validado a: ')
+        printer.write(endpoint, dt_string.encode('utf-8'))
+        printer.write(endpoint, b'\n\n\n\n \n\n\n\n')
+        printer.write(endpoint, b'\n\n\n\n \n\n\n\n')
+        printer.write(endpoint, b'\n\n\n\n \n\n\n\n')
+
+    
+        # Cut the paper
+        printer.write(endpoint, b'\x1d\x56\x01')
+        
+    except usb.core.USBError as e:
+        print(f"Could not write to the printer: {e}")
+
+
 def save_image(image_file, order_number):
     timestamp = datetime.datetime.now().strftime('%Y%m%d_%Hh%Mm%Ss')
     saved_filename = f"{config.img_path}{timestamp}_{order_number}_confirmed.png"
