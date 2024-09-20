@@ -12,6 +12,8 @@ import requests
 import subprocess
 import os
 from urllib3.exceptions import InsecureRequestWarning
+import usb.core
+import usb.util
 
 # Suprimir o aviso de request inseguro
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
@@ -738,6 +740,7 @@ def process_weighing(window, serial_scale, estimated_weight, order_number, camer
             print(f"{CYAN}Peso dentro da faixa aceitável. Confirmando pedido {order_number}.{RESET}")
             update_confirmation_status(window, deviation)
             confirm_order_api(order_number)  # Confirmar o pedido na API
+            print_confirmation(order_number)
             
             # Enviar os dados de pesagem para a API
             send_weight_data_to_api(
