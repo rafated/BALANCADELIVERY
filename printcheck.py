@@ -1,7 +1,7 @@
 
 import usb.core
 import usb.util
-from datetime import datetime
+
 
 
 #README
