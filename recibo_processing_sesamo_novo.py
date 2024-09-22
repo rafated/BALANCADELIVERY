@@ -162,6 +162,8 @@ def main():
                             if word.isdigit():
                                 nr_pedido = int(word)
                     if word[0].isdigit():
+                        if " ".join(word[1:]).upper() in ["SEM SACO", "TAXA SACO"]:
+                            continue  # Ignorar essas linhas
                         PickList.append(pick_list())
                         PickList[product_index].quantidade = word[0]
                         word.pop(0)
@@ -398,6 +400,7 @@ def main():
                         "time_stamp": time_stamp,
                     })
                     con.commit()
+                    con.close()
                     print(GREEN + "PickList gravada com sucesso no banco de dados." + RESET)
                 else:
                     print(RED + "Erro ao abrir a base de dados" + RESET)
@@ -419,9 +422,6 @@ def main():
             print(RED + "Erro no processamento da PickList." + RESET)
             print(f'{e}')
             # break    
-        
-        if(config.api_offline == True):
-            con.close() 
-
+ 
 if __name__ == '__main__':
     main()
