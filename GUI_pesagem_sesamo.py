@@ -15,6 +15,7 @@ from urllib3.exceptions import InsecureRequestWarning
 import usb.core
 import usb.util
 
+
 # Suprimir o aviso de request inseguro
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
@@ -24,15 +25,7 @@ GREEN = "\033[0;32m"
 RESET = "\033[0;0m"
 CYAN = "\033[1;36m"
 
-# Global variables
-row_counter = 0
-row_number_view = 1
-weighing_attempts = {}  # Dicionário para rastrear tentativas de pesagem por pedido
-last_order_number = 1
-verped_running = False
-funcpri = None
-verped_lock = threading.Lock()  # Adiciona um lock para controle de execução
-
+# Find the device (replace with your device's vendor and product ID)
 printer = usb.core.find(idVendor=0x04b8, idProduct=0x0202)
 
 normal_size = b'\x1b\x21\x00'    # Normal size
@@ -51,6 +44,14 @@ align_right = b'\x1b\x61\x02'    # Right align
 full_cut = b'\x1d\x56\x00'   # Full cut
 partial_cut = b'\x1d\x56\x01'  # Partial cut
 
+# Global variables
+row_counter = 0
+row_number_view = 1
+weighing_attempts = {}  # Dicionário para rastrear tentativas de pesagem por pedido
+last_order_number = 1
+verped_running = False
+funcpri = None
+verped_lock = threading.Lock()  # Adiciona um lock para controle de execução
 
 def teste_api_connection():
     print(GREEN + "Testando conexão à API" + RESET)
@@ -107,7 +108,7 @@ def fetch_last_order():
     # Fallback para o banco de dados local
     print(GREEN + "Usando o banco de dados local para buscar o último pedido." + RESET)
     con, cur = open_database_connection()
-    if con is not None or config.pending_order == True:
+    if con is not None:
         cur.execute("SELECT * FROM pick_list WHERE state = 0 AND codigo_restaurante = :rest_code ORDER BY id DESC LIMIT 1", {"rest_code": config.rest_code})
         response = cur.fetchall()
         if response:  # Verifica se há resultados na consulta
@@ -146,7 +147,7 @@ def update_order_state(order_number):
     else:
         # Fallback para o banco de dados local
         con, cur = open_database_connection()
-        if con is not None or config.pending_order == True:
+        if con is not None:
             try:
                 print(GREEN + "Conexão ao banco de dados bem-sucedida" + RESET)
                 cur.execute(
@@ -178,7 +179,7 @@ def confirm_order_api(order_number):
             print(f"{RED}Erro ao confirmar o pedido: {e}{RESET}")
     else:
         con, cur = open_database_connection()
-        if con is not None or config.pending_order == True:
+        if con is not None:
             print(GREEN + "Conexão ao banco de dados bem-sucedida" + RESET)
             cur.execute("UPDATE pick_list SET confirmado = 1 WHERE id = (SELECT id FROM pick_list WHERE delivery_name = :order_number AND codigo_restaurante = :rest_code ORDER BY id DESC LIMIT 1)", {"order_number": order_number, "rest_code": config.rest_code})
             con.commit()
@@ -210,7 +211,7 @@ def fetch_order_state(order_number):
     else:
         # Fallback para o banco de dados local
         con, cur = open_database_connection()
-        if con is not None or config.pending_order == True:
+        if con is not None:
             print(GREEN + "Conexão ao banco de dados bem-sucedida" + RESET)
             try:
                 cur.execute("SELECT state, confirmado FROM pick_list WHERE delivery_name = :order_number AND codigo_restaurante = :rest_code ORDER BY id DESC LIMIT 1", {"order_number": order_number ,"rest_code": config.rest_code})
@@ -263,7 +264,7 @@ def fetch_order_details(order_number):
     else:
         # Fallback para banco de dados local
         con, cur = open_database_connection()
-        if con is not None or config.pending_order == True:
+        if con is not None:
             print(GREEN + "Conexão ao banco de dados bem-sucedida" + RESET)
             try:
                 cur.execute("SELECT * FROM pick_list WHERE delivery_name = :order_number AND codigo_restaurante = :rest_code ORDER BY id DESC LIMIT 1", {"order_number": order_number, "rest_code": config.rest_code})
@@ -288,16 +289,12 @@ def fetch_order_details(order_number):
                         "id": order[0] if len(order) > 0 and order[0] is not None else None,
                         "delivery_name": order[1] if len(order) > 1 and order[1] is not None else '',
                         "list": list_data,  # Usa a lista processada
-                        "peso_produto": order[3] if len(order) > 3 and order[3] is not None else '',
-                        "peso": order[4] if len(order) > 4 and order[4] is not None else 0,
-                        "peso_natura": order[5] if len(order) > 5 and order[5] is not None else 0,
-                        "variancia": order[6] if len(order) > 6 and order[6] is not None else 0,
-                        "pick_list_file": order[7] if len(order) > 7 and order[7] is not None else '',
-                        "state": order[8] if len(order) > 8 and order[8] is not None else 0,
-                        "confirmado": order[9] if len(order) > 9 and order[9] is not None else 0,
-                        "pendente": order[10] if len(order) > 10 and order[10] is not None else 0,
-                        "codigo_restaurante": order[11] if len(order) > 11 and order[11] is not None else None,
-                        "time_stamp": order[12] if len(order) > 12 and order[12] is not None else ''
+                        "pick_list_file": order[2] if len(order) > 7 and order[7] is not None else '',
+                        "state": order[3] if len(order) > 8 and order[8] is not None else 0,
+                        "confirmado": order[4] if len(order) > 9 and order[9] is not None else 0,
+                        "pendente": order[5] if len(order) > 10 and order[10] is not None else 0,
+                        "codigo_restaurante": order[6] if len(order) > 11 and order[11] is not None else None,
+                        "time_stamp": order[7] if len(order) > 12 and order[12] is not None else ''
                     }
                     print(f"{GREEN}Order details fetched and standardized from DB: {order_json}{RESET}")
                     return order_json  # Retorna o dicionário estruturado
@@ -314,7 +311,7 @@ def fetch_order_details(order_number):
             return None
 
     
-def send_weight_data_to_api(pick_list_id, peso_estimado, peso_real, photo, start_time_stamp, end_time_stamp, tentativas):
+def send_weight_data_to_api(pick_list_id, peso_estimado, peso_real, photo, start_time_stamp, end_time_stamp, tentativas, itens):
     if(config.api_offline == False):
         url = f"{config.api_url}/pesagem"  # Endpoint da API para inserir dados na tabela pesagem
         payload = {
@@ -324,7 +321,8 @@ def send_weight_data_to_api(pick_list_id, peso_estimado, peso_real, photo, start
             "photo": photo,
             "start_time_stamp": start_time_stamp,
             "end_time_stamp": end_time_stamp,
-            "tentativas": tentativas
+            "tentativas": tentativas,
+            "itens": itens
         }
         try:
             response = requests.post(url, json=payload, verify=False)  # Enviando o payload como JSON
@@ -332,54 +330,19 @@ def send_weight_data_to_api(pick_list_id, peso_estimado, peso_real, photo, start
             print(f"{GREEN}Dados de pesagem enviados com sucesso: {response.json()}{RESET}")
         except requests.exceptions.RequestException as e:
             print(f"{RED}Erro ao enviar dados de pesagem para a API: {e}{RESET}")
-    else:
-        con, cur = open_database_connection()
-        cur.execute("SELECT time_stamp FROM pick_list WHERE id = :pick_list_id", {"pick_list_id": pick_list_id})
-        response = cur.fetchall()
+    if(config.pending_order == True):
+        con, cur= open_database_connection()
         if con is not None:
             print(GREEN + "Conexão ao banco de dados bem-sucedida" + RESET)
-
-            # Primeiro, buscamos o timestamp inicial
-            cur.execute("SELECT time_stamp FROM pick_list WHERE id = :pick_list_id", {"pick_list_id": pick_list_id})
-            response = cur.fetchone()  # Use fetchone() para pegar um único resultado
-            
-            # Verifique se um resultado foi encontrado
-            if response:
-                start_time_stamp = response[0]  # Extrai o valor do timestamp
-                print("O time stamp é:", start_time_stamp)
-            else:
-                print(RED + "Nenhum registro encontrado para o ID fornecido." + RESET)
-                start_time_stamp = None 
-
-            # Só insira na tabela 'pesagem' se o timestamp inicial foi encontrado
-            if start_time_stamp is not None:
-                try:
-                    cur.execute(
-                        """
-                        INSERT INTO pesagem (pick_list_id, peso_estimado, peso_real, start_time_stamp, end_time_stamp, tentativas)
-                        VALUES (:pick_list_id, :peso_estimado, :peso_real, :start_time_stamp, :end_time_stamp, :tentativas)
-                        """,
-                        {
-                            "pick_list_id": pick_list_id,
-                            "peso_estimado": peso_estimado,
-                            "peso_real": peso_real,
-                            "start_time_stamp": start_time_stamp,
-                            "end_time_stamp": end_time_stamp,
-                            "tentativas": tentativas
-                        }
-                    )
-                    con.commit()
-                    print(GREEN + "Dados de pesagem adicionados ao banco de dados." + RESET)
-                except sqlite3.Error as e:
-                    print(RED + f"Erro ao executar comando SQL: {e}" + RESET)
-            else:
-                print(RED + "Falha ao inserir dados na tabela 'pesagem' devido à ausência de timestamp inicial." + RESET)
+            cur.execute("INSERT INTO pesagem (pick_list_id, peso_estimado, peso_real, photo, start_time_stamp, end_time_stamp, tentativas) VALUES (:pick_list_id, :peso_estimado, :peso_real, :photo, :start_time_stamp, :end_time_stamp, :tentativas)", {"pick_list_id": pick_list_id ,"peso_estimado": peso_estimado, "peso_real": peso_real, "photo": photo, "start_time_stamp":start_time_stamp, "end_time_stamp": end_time_stamp, "tentativas": tentativas})
+            con.commit()
+            print(GREEN + "Dados de pesagem adicionados ao banco de dados." + RESET)
         else:
             print(RED + "Erro ao abrir a base de dados" + RESET)
 
 def clear_database_orders():
     print("Clearing orders in the database via API")
-    if(config.api_offline == False):
+    if(config.api_offline == False or config.pending_order == False):
         url = f"{config.api_url}/pedidos/limpar"
         try:
             response = requests.post(url, verify=False)
@@ -389,7 +352,7 @@ def clear_database_orders():
             print(f"{RED}Erro ao limpar pedidos na API: {e}{RED}")
     if(config.pending_order == True):
         con, cur= open_database_connection()
-        if con is not None or config.pending_order == True:
+        if con is not None:
             print(GREEN + "Conexão ao banco de dados bem-sucedida" + RESET)
             cur.execute("UPDATE pick_list SET confirmado = 1, state = 1 WHERE (confirmado = 0 OR state = 0) AND codigo_restaurante = :rest_code", {"rest_code": config.rest_code})
             con.commit()
@@ -401,7 +364,6 @@ def clear_database_orders():
 # GUI Layout Functions
 def create_button(nr_pedido, row_counter, row_number_view):
     global last_order_number
-    #TESTE_________________________________________-
     if(last_order_number  == nr_pedido):
         print(f"{RED}Botão duplicado detectado{RESET}")
         row = [sg.pin(
@@ -540,7 +502,7 @@ def process_order(window, order, serial_scale, camera, id):
         log_error("Formato inesperado para o campo 'list'.")
         order_json = []
 
-    peso, variancia = calculate_order_weight(window, order_json)
+    peso, variancia, itens = calculate_order_weight(window, order_json)
 
     # Atualiza a interface com o peso estimado calculado
     window['-Peso_t-'].update(f'{peso}')
@@ -550,7 +512,7 @@ def process_order(window, order, serial_scale, camera, id):
 
     capture_image(camera, order['id'], window)
 
-    process_weighing(window, serial_scale, peso, order['delivery_name'], camera, id)
+    process_weighing(window, serial_scale, peso, order['delivery_name'], camera, id, itens)
 
 def calculate_order_weight(window, order_json):
     print(f"{CYAN}Calculating weight for order items{RESET}")
@@ -561,6 +523,7 @@ def calculate_order_weight(window, order_json):
     found_bag = False
     found_ketchup = False
     found_both = False
+    itens_count = 0
 
     for item in order_json:
         if item["tipo"] == "Molho":
@@ -569,11 +532,13 @@ def calculate_order_weight(window, order_json):
             if 'ketchup' in item["name"].lower():
                 found_ketchup = True
             display_order_item(window, '-ML1-', item, 'orange')
+            itens_count += 1 * int(item["quantidade"])
         elif item["tipo"] == "Addon":
             if 'sopa' not in item["name"].lower():
                 peso += int(item["quantidade"]) * item["peso_produto"]
                 print(f"Peso atualizado (Addon): {peso}")
             display_order_item(window, '-ML5-', item)
+            itens_count += 1 * int(item["quantidade"])
         elif item["tipo"] == "Sanduiche":
             # Verifica se o item possui peso negativo (Happy Meal ou similar)
             if item["peso"] < 0:
@@ -598,16 +563,22 @@ def calculate_order_weight(window, order_json):
             if 'tarte de maca' in item["name"].lower():
                 found_tarte = True
             display_order_item(window, '-ML2-', item)
+            itens_count += 1 * int(item["quantidade"])
         elif item["tipo"] == "Batata":
             peso += int(item["quantidade"]) * item["peso_produto"]
             print(f"Peso atualizado (Batata): {peso}")
             display_order_item(window, '-ML3-', item)
-        elif item["tipo"] in ["Bebida", "Sobremesa", "Gelado"]:
+            itens_count += 1 * int(item["quantidade"])
+        elif item["tipo"] in ["Bebida", "Sobremesa", "Gelado", "Outros"]:
             if 'saco de transporte' in item["name"].lower():
                 peso += 14
                 found_bag = True
-            display_order_item(window, '-ML4-', item)
+                display_order_item(window, '-ML4-', item, "orange")
+            else:
+                display_order_item(window, '-ML4-', item)
+            itens_count += 1 * int(item["quantidade"])
 
+    print(itens_count)
 # Simplificando a lógica de alerta de molho
     if found_molho or found_ketchup:
         if found_molho and found_ketchup:
@@ -616,7 +587,6 @@ def calculate_order_weight(window, order_json):
             window['-molho-'].update('\n\n Atenção! \n O Pedido leva molho!', background_color='orange', text_color='white')
         elif found_ketchup:
             window['-molho-'].update('\n\n Atenção! \n O Pedido leva ketchup!', background_color='red', text_color='white')
-
     if found_tarte:
         window['-tarte-'].update('\n\n Atenção! \n O pedido leva tarte de maça!', background_color='blue', text_color='white')
 
@@ -644,7 +614,7 @@ def calculate_order_weight(window, order_json):
     # Mudar fundo do campo de sobremesas para azul se uma tarte de maçã for encontrada
 
     print(f"{CYAN}Calculated weight: {peso}, variancia: {variancia}{RESET}")
-    return peso, variancia
+    return peso, variancia, itens_count
 
 def display_order_item(window, key, item, background_color=None):
     s = f"{item['quantidade']} {item['name']}"
@@ -659,7 +629,7 @@ def display_order_item(window, key, item, background_color=None):
 def capture_image(camera, order_number, window):
     print(f"{CYAN}Capturing image for order number: {order_number}{RESET}")
     timestamp = datetime.datetime.now().strftime('%Y%m%d_%Hh%Mm%Ss')
-    frameSize = (320, 240)
+    frameSize = (400, 260)
 
     try:
         cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)  # Abre o objeto da câmera
@@ -699,116 +669,11 @@ def capture_image(camera, order_number, window):
         print(e)
         return None  # Retorna None em caso de exceção
 
+
 def get_string_time():
     current_time = datetime.datetime.now()
     time_string = current_time.strftime('%Y%m%d_%Hh%Mm%Ss')
     return time_string
-
-def process_weighing(window, serial_scale, estimated_weight, order_number, camera, id):
-    global weighing_attempts
-    weighing_try = 0
-
-    # Fetch order details
-    order = fetch_order_details(order_number)
-    
-    # Extract id and time_stamp from the fetched order details
-    order_id = order['id']  # Captura o id do pedido
-    start_time_stamp = order['time_stamp']  # Captura o time_stamp do pedido
-    end_time_stamp = get_string_time()
-    
-    print(order_id)  # Imprime o id
-    print(start_time_stamp)  # Imprime o time_stamp
-    print(end_time_stamp)
-
-    print(f"{CYAN}Processing weighing, estimated weight: {estimated_weight}{RESET}")
-    weights = []
-    image_file = None  # Variável para armazenar o caminho da imagem
-
-    # Tentar ler os dados da balança por até 10 vezes
-    for _ in range(5):
-        time.sleep(0.2)
-        serial_scale.flushInput()
-        scale_data = serial_scale.readline().decode('utf-8').strip()
-        print(f"{CYAN}Raw scale data: {scale_data}{RESET}")  # Imprimir os dados brutos
-
-        try:
-            # Verifica se o dado é do formato esperado e extrai o valor em kg
-            if scale_data.startswith('ST'):
-                # Extrai a parte do peso em kg (posição 7 até 14)
-                weight_kg = float(scale_data[7:14])
-                weight_grams = int(weight_kg * 1000)  # Converte para gramas
-                print(f"{CYAN}Processed weight: {weight_grams}{RESET}")  # Verifica o peso processado
-                if weight_grams > 0:
-                    weights.append(weight_grams)
-        except ValueError as ve:
-            print(f"{RED}ValueError: {ve}{RESET}")  # Mostrar o erro específico
-            print(f"{RED}Invalid data received from scale.{RESET}")
-        
-        if len(weights) >= 3:
-            break
-    if weights:
-        actual_weight = weights[-1]  # Pega o último valor válido de peso
-        image_file = capture_image(camera, order_id, window)
-        print(image_file)
-        deviation = actual_weight - estimated_weight
-        print(f"Actual weight: {actual_weight}, Deviation: {deviation}")
-        window['-Peso_r-'].update(str(actual_weight))
-        
-        # Se o desvio estiver dentro da faixa aceitável, o pedido deve ser confirmado
-        if -60 <= deviation <= 100:
-            weighing_try += 1
-            print(f"{CYAN}Peso dentro da faixa aceitável. Confirmando pedido {order_number}.{RESET}")
-            update_confirmation_status(window, deviation)
-            confirm_order_api(order_number)  # Confirmar o pedido na API
-            print_confirmation(order_number)
-            
-            # Enviar os dados de pesagem para a API
-            send_weight_data_to_api(
-                pick_list_id=order_id,  # Utiliza o id do pedido
-                peso_estimado=estimated_weight,
-                peso_real=actual_weight,
-                photo=image_file,
-                start_time_stamp=start_time_stamp,
-                end_time_stamp=end_time_stamp,
-                tentativas=weighing_try
-            )
-            
-            window[('-ROW-', order_number)].update(visible=False)  # Remove o pedido da tela
-        else:
-            weighing_try += 1
-            print(f"{CYAN}Peso fora da faixa aceitável.{RESET}")
-            update_confirmation_status(window, deviation)
-            # Incrementar o contador de tentativas para o pedido
-            if order_number in weighing_attempts:
-                weighing_attempts[order_number] += 1
-            else:
-                weighing_attempts[order_number] = 1
-
-            # Verificarse o limite de tentativas foi atingido
-            if weighing_attempts[order_number] >= 2:
-                print(f"{CYAN}Pedido {order_number} removido após 2 tentativas falhadas.{RESET}")
-                window[('-ROW-', order_number)].update(visible=False)
-                del weighing_attempts[order_number]  # Remover o pedido das tentativas
-                send_weight_data_to_api(
-                    pick_list_id=order_id,  # Utiliza o id do pedido
-                    peso_estimado=estimated_weight,
-                    peso_real=actual_weight,
-                    photo=image_file,
-                    start_time_stamp=start_time_stamp,
-                    end_time_stamp=end_time_stamp,
-                    tentativas=weighing_try
-                )
-            
-    else:
-        if estimated_weight <= 7:
-            window['-Peso_r-'].update("n/a")
-            window['-Confirmar-'].update('\n Pedido não aplicável à balança', background_color="gray60")
-            window[('-ROW-', order_number)].update(visible=False)
-        else:
-            print(f"{CYAN}Peso instável ou 0{RESET}")
-            window['-Peso_r-'].update("Instável")
-            window['-Confirmar-'].update('\n Pedido instável ou a 0', background_color="gray60")
-
 
 def print_confirmation(order_number):
     if printer is None:
@@ -858,7 +723,122 @@ def print_confirmation(order_number):
     except usb.core.USBError as e:
         print(f"Could not write to the printer: {e}")
 
+def process_weighing(window, serial_scale, estimated_weight, order_number, camera, id, itens):
+    global weighing_attempts
+    
+    # Fetch order details
+    order = fetch_order_details(order_number)
+    
+    # Extract id and time_stamp from the fetched order details
+    order_id = order['id']  # Captura o id do pedido
+    start_time_stamp = order['time_stamp']  # Captura o time_stamp do pedido
+    end_time_stamp = get_string_time()
+    
+    print(order_id)  # Imprime o id
+    print(start_time_stamp)  # Imprime o time_stamp
+    print(end_time_stamp)
 
+    print(f"{CYAN}Processing weighing, estimated weight: {estimated_weight}{RESET}")
+    weights = []
+    image_file = None  # Variável para armazenar o caminho da imagem
+
+    # Tentar ler os dados da balança por até 10 vezes
+    for _ in range(5):
+        time.sleep(0.2)
+        serial_scale.flushInput()
+        scale_data = serial_scale.readline().decode('utf-8').strip()
+        print(f"{CYAN}Raw scale data: {scale_data}{RESET}")  # Imprimir os dados brutos
+
+        try:
+            # Verifica se o dado é do formato esperado e extrai o valor em kg
+            if scale_data.startswith('ST'):
+                # Extrai a parte do peso em kg (posição 7 até 14)
+                weight_kg = float(scale_data[7:14])
+                weight_grams = int(weight_kg * 1000)  # Converte para gramas
+                print(f"{CYAN}Processed weight: {weight_grams}{RESET}")  # Verifica o peso processado
+                if weight_grams > 0:
+                    weights.append(weight_grams)
+        except ValueError as ve:
+            print(f"{RED}ValueError: {ve}{RESET}")  # Mostrar o erro específico
+            print(f"{RED}Invalid data received from scale.{RESET}")
+        
+        if len(weights) >= 3:
+            break
+    weighing_try = 0
+    if weights:
+        actual_weight = weights[-1]  # Pega o último valor válido de peso
+        image_file = capture_image(camera, order_id, window)
+        deviation = actual_weight - estimated_weight
+        print(f"Actual weight: {actual_weight}, Deviation: {deviation}")
+        window['-Peso_r-'].update(str(actual_weight))
+        
+        # Se o desvio estiver dentro da faixa aceitável, o pedido deve ser confirmado
+        if -60 <= deviation <= 100:
+            if estimated_weight <= 10:
+                window['-Peso_r-'].update("n/a")
+                window['-Confirmar-'].update('\n Pedido não aplicável à balança', background_color="gray60")
+                window[('-ROW-', order_number)].update(visible=False)
+            else:
+                weighing_try += 1
+                print(f"{CYAN}Peso dentro da faixa aceitável. Confirmando pedido {order_number}.{RESET}")
+                update_confirmation_status(window, deviation)
+                confirm_order_api(order_number)  # Confirmar o pedido na API
+                print_confirmation(order_number) #imprime ticket na impressora com dados
+                
+                # Enviar os dados de pesagem para a API
+                send_weight_data_to_api(
+                    pick_list_id=order_id,  # Utiliza o id do pedido
+                    peso_estimado=estimated_weight,
+                    peso_real=actual_weight,
+                    photo=image_file,
+                    start_time_stamp=start_time_stamp,
+                    end_time_stamp=end_time_stamp,
+                    tentativas=weighing_try,
+                    itens=itens
+                )
+            
+            window[('-ROW-', order_number)].update(visible=False)  # Remove o pedido da tela
+        else:
+            if estimated_weight <= 10:
+                window['-Peso_r-'].update("n/a")
+                window['-Confirmar-'].update('\n Pedido não aplicável à balança', background_color="gray60")
+                window[('-ROW-', order_number)].update(visible=False)
+
+            else:
+                weighing_try += 1
+                print(f"{CYAN}Peso fora da faixa aceitável.{RESET}")
+                update_confirmation_status(window, deviation)
+                # Incrementar o contador de tentativas para o pedido
+                if order_number in weighing_attempts:
+                    weighing_attempts[order_number] += 1
+                else:
+                    weighing_attempts[order_number] = 1
+
+                # Verificarse o limite de tentativas foi atingido
+                if weighing_attempts[order_number] >= 2:
+                    print(f"{CYAN}Pedido {order_number} removido após 2 tentativas falhadas.{RESET}")
+                    window[('-ROW-', order_number)].update(visible=False)
+                    del weighing_attempts[order_number]  # Remover o pedido das tentativas
+                    send_weight_data_to_api(
+                        pick_list_id=order_id,  # Utiliza o id do pedido
+                        peso_estimado=estimated_weight,
+                        peso_real=actual_weight,
+                        photo=image_file,
+                        start_time_stamp=start_time_stamp,
+                        end_time_stamp=end_time_stamp,
+                        tentativas=weighing_try,
+                        itens=itens
+                    )
+    else:
+        if estimated_weight <= 10:
+            window['-Peso_r-'].update("n/a")
+            window['-Confirmar-'].update('\n Pedido não aplicável à balança', background_color="gray60")
+            window[('-ROW-', order_number)].update(visible=False)
+        else:
+            print(f"{CYAN}Peso instável ou 0{RESET}")
+            window['-Peso_r-'].update("Instável")
+            window['-Confirmar-'].update('\n Pedido instável ou a 0', background_color="gray60")
+        
 def save_image(image_file, order_number):
     timestamp = datetime.datetime.now().strftime('%Y%m%d_%Hh%Mm%Ss')
     saved_filename = f"{config.img_path}{timestamp}_{order_number}_confirmed.png"
@@ -978,10 +958,9 @@ def reset_orders(window):
     row_number_view = 1
     
     # Criar uma nova instância de SetInterval após cancelar a anterior
-    funcpri = SetInterval(3, lambda: verped(window, None, None))
+    funcpri = SetInterval(0.5, lambda: verped(window, None, None))
     
     print("Checking for pending orders")
-    time.sleep(3)
     order = fetch_last_order()
 
     if order:
