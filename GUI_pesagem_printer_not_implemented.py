@@ -826,7 +826,7 @@ def process_weighing(window, serial_scale, estimated_weight, order_number, camer
                         photo=image_file,
                         start_time_stamp=start_time_stamp,
                         end_time_stamp=end_time_stamp,
-                        tentativas=weighing_try,
+                        tentativas=2,
                         itens=itens
                     )
     else:
