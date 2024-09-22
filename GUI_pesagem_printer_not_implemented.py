@@ -16,7 +16,7 @@ import usb.core
 import usb.util
 
 
-# Suprimir o aviso de request inseguro
+# Suprimir o aviso de request inseguro.
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
 # Cores para mostrar as mensagens na consola
