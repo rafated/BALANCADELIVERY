@@ -562,7 +562,9 @@ def calculate_order_weight(window, order_json):
             # Verifica se o item é uma tarte de maçã
             if 'tarte de maca' in item["name"].lower():
                 found_tarte = True
-            display_order_item(window, '-ML2-', item)
+                display_order_item(window, '-ML2-', item, "orange")
+            else:
+                display_order_item(window, '-ML2-', item)
             itens_count += 1 * int(item["quantidade"])
         elif item["tipo"] == "Batata":
             peso += int(item["quantidade"]) * item["peso_produto"]
