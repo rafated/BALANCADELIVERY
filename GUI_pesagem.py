@@ -1,4 +1,4 @@
-#Código atualizado --28 Setembro de 2024 -- 14h24
+#Código atualizado --28 Setembro de 2024 -- 16h24
 import PySimpleGUI as sg
 import sqlite3
 import config
