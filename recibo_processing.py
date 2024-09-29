@@ -1,3 +1,4 @@
+#Código atualizado --28 Setembro de 2024 -- 14h24
 import requests
 import time
 import json
