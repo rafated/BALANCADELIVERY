@@ -6,9 +6,17 @@ const rateLimit = require('express-rate-limit');
 const cors = require('cors');
 const sqlite3 = require('sqlite3').verbose();
 const { body, query, validationResult } = require('express-validator');
+require('dotenv').config();  // Carregar variáveis de ambiente do arquivo .env
+
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcrypt');
+
+// Chave secreta do JWT a partir da variável de ambiente
+const JWT_SECRET = process.env.JWT_SECRET;
 
 const app = express();
-const port = 3000;
+const port = process.env.PORT || 3000;  // Usa a porta do .env ou 3000 como fallback
+
 
 // Carregar certificados SSL
 const privateKey = fs.readFileSync('C:/Users/Uber/Desktop/API/server.key', 'utf8');
@@ -48,10 +56,62 @@ const corsOptions = {
 };
 app.use(cors(corsOptions));
 
+// Rota de login para autenticação
+app.post('/api/login', (req, res) => {
+    const { username, password } = req.body;
+
+    // Consulta o banco de dados para verificar se o usuário existe
+    const sql = "SELECT * FROM usuarios WHERE user = ?";
+    
+    db.get(sql, [username], async (err, user) => {
+        if (err) {
+            console.error('Erro ao buscar usuário no banco de dados:', err.message);
+            return res.status(500).json({ message: 'Erro no servidor.' });
+        }
+
+        // Se o usuário não for encontrado
+        if (!user) {
+            return res.status(401).json({ message: 'Usuário ou senha inválidos' });
+        }
+
+        // Comparar a senha fornecida com a senha armazenada no banco (hash)
+        const validPassword = await bcrypt.compare(password, user.password);
+        if (!validPassword) {
+            return res.status(401).json({ message: 'Usuário ou senha inválidos' });
+        }
+
+        // Gera o token JWT para o usuário
+        const token = jwt.sign({ id: user.id, username: user.user }, JWT_SECRET, { expiresIn: '1h' });
+
+        // Retorna o token ao cliente
+        res.json({ token });
+    });
+});
+
+// Middleware para verificar o token JWT
+function authenticateToken(req, res, next) {
+    const token = req.headers['authorization'];
+
+    if (!token) {
+        return res.status(401).json({ message: 'Acesso negado, token não fornecido' });
+    }
+
+    jwt.verify(token, JWT_SECRET, (err, user) => {
+        if (err) {
+            return res.status(403).json({ message: 'Token inválido' });
+        }
+        req.user = user; // Adiciona os dados do usuário à requisição
+        next();
+    });
+}
+
+
 app.get('/api', (req, res) => {
     res.status(200).json({ message: 'API is online' });
 });
 //----------------------------ROTAS RECIBO_PROCESSING----------------------------------
+
+
 
 // Rota GET para buscar produtos com designação específica
 app.get('/api/produtos', 
@@ -283,12 +343,12 @@ app.post('/api/pesagem',
             return res.status(400).json({ errors: errors.array() });
         }
 
-        const { pick_list_id, peso_estimado, peso_real, photo, start_time_stamp, end_time_stamp, tentativas} = req.body;
+        const { pick_list_id, peso_estimado, peso_real, photo, start_time_stamp, end_time_stamp, tentativas, itens} = req.body;
 
         const sql = `
-            INSERT INTO pesagem (pick_list_id, peso_estimado, peso_real, photo, start_time_stamp, end_time_stamp, tentativas) 
-            VALUES (?, ?, ?, ?, ?, ?, ?)`;
-        const params = [pick_list_id, peso_estimado, peso_real, photo, start_time_stamp, end_time_stamp, tentativas];
+            INSERT INTO pesagem (pick_list_id, peso_estimado, peso_real, photo, start_time_stamp, end_time_stamp, tentativas, itens) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
+        const params = [pick_list_id, peso_estimado, peso_real, photo, start_time_stamp, end_time_stamp, tentativas, itens];
 
         db.run(sql, params, function(err) {
             if (err) {
