@@ -95,11 +95,14 @@ def update_existing_order_button(window, nr_pedido):
                 window[key].update(visible=True)  # Torna o botão visível, se foi ocultado
 
 def fetch_last_order():
+    headers = {
+        'x-api-key': config.api_key  # Adicionando o cabeçalho da API Key
+    }
     if teste_api_connection():  # Verifica se a API está online
         url = f"{config.api_url}/pedidos/ultimo"
         params = {'rest_code': config.rest_code}
         try:
-            response = requests.get(url, params=params, verify=False)
+            response = requests.get(url, params=params, headers=headers,verify=False)
             response.raise_for_status()
             return response.json()
         except requests.exceptions.RequestException as e:
@@ -134,11 +137,14 @@ def fetch_last_order():
 
 
 def update_order_state(order_number):
+    headers = {
+        'x-api-key': config.api_key  # Adicionando o cabeçalho da API Key
+    }
     if teste_api_connection():  # Verifica se a API está online
         url = f"{config.api_url}/pedido/confirmar_estado"
         params = {'pedido': order_number, "rest_code": config.rest_code}
         try:
-            response = requests.post(url, params=params, verify=False)
+            response = requests.post(url, params=params, headers=headers ,verify=False)
             response.raise_for_status()
             print(f"{GREEN}Pedido {order_number} confirmado com sucesso na API.{RESET}")
             return True  # Retorna True para indicar sucesso
@@ -169,11 +175,14 @@ def update_order_state(order_number):
 
 
 def confirm_order_api(order_number):
+    headers = {
+        'x-api-key': config.api_key  # Adicionando o cabeçalho da API Key
+    }
     if teste_api_connection():
         url = f"{config.api_url}/pedido/confirmar"
         params = {'pedido': order_number, 'rest_code': config.rest_code}
         try:
-            response = requests.post(url, params=params, verify=False)
+            response = requests.post(url, params=params, headers=headers, verify=False)
             response.raise_for_status()
             print(f"{GREEN}Pedido {order_number} confirmado com sucesso.{RESET}")
         except requests.exceptions.RequestException as e:
@@ -191,11 +200,14 @@ def confirm_order_api(order_number):
 import json  # Certifique-se de importar o módulo json
 
 def fetch_order_state(order_number):
+    headers = {
+        'x-api-key': config.api_key  # Adicionando o cabeçalho da API Key
+    }
     if teste_api_connection():
         url = f"{config.api_url}/pedido/estado"
         params = {'pedido': order_number, 'rest_code': config.rest_code}
         try:
-            response = requests.get(url, params=params, verify=False)
+            response = requests.get(url, params=params, headers=headers, verify=False)
             response.raise_for_status()
             data = response.json()
             
@@ -246,12 +258,15 @@ def fetch_order_state(order_number):
             return None
 
 def fetch_order_details(order_number):
+    headers = {
+        'x-api-key': config.api_key  # Adicionando o cabeçalho da API Key
+    }
     if teste_api_connection():
         url = f"{config.api_url}/pedidos/detalhes"
         params = {'pedido': order_number, 'rest_code': config.rest_code}
         print(f"{GREEN}Fetching order details{RESET}")
         try:
-            response = requests.get(url, params=params, verify=False)
+            response = requests.get(url, params=params, headers=headers, verify=False)
             response.raise_for_status()
             data = response.json()
 
@@ -313,6 +328,9 @@ def fetch_order_details(order_number):
 
     
 def send_weight_data_to_api(pick_list_id, peso_estimado, peso_real, photo, start_time_stamp, end_time_stamp, tentativas, itens):
+    headers = {
+        'x-api-key': config.api_key  # Adicionando o cabeçalho da API Key
+    }
     if(config.api_offline == False):
         url = f"{config.api_url}/pesagem"  # Endpoint da API para inserir dados na tabela pesagem
         payload = {
@@ -326,7 +344,7 @@ def send_weight_data_to_api(pick_list_id, peso_estimado, peso_real, photo, start
             "itens": itens
         }
         try:
-            response = requests.post(url, json=payload, verify=False)  # Enviando o payload como JSON
+            response = requests.post(url, json=payload, headers=headers, verify=False)  # Enviando o payload como JSON
             response.raise_for_status()  # Levanta um erro se o status code não for 200
             print(f"{GREEN}Dados de pesagem enviados com sucesso: {response.json()}{RESET}")
         except requests.exceptions.RequestException as e:
@@ -342,11 +360,14 @@ def send_weight_data_to_api(pick_list_id, peso_estimado, peso_real, photo, start
             print(RED + "Erro ao abrir a base de dados" + RESET)
 
 def clear_database_orders():
+    headers = {
+        'x-api-key': config.api_key  # Adicionando o cabeçalho da API Key
+    }
     print("Clearing orders in the database via API")
     if(config.api_offline == False or config.pending_order == False):
         url = f"{config.api_url}/pedidos/limpar"
         try:
-            response = requests.post(url, verify=False)
+            response = requests.post(url, headers=headers, verify=False)
             response.raise_for_status()
             print(f"{GREEN}Pedidos limpos com sucesso na API.{RESET}")
         except requests.exceptions.RequestException as e:
