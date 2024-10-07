@@ -768,7 +768,7 @@ def process_weighing(window, serial_scale, estimated_weight, order_number, camer
 
     # Tentar ler os dados da balança por até 10 vezes
     for _ in range(5):
-        time.sleep(0.2)
+        time.sleep(0.7)
         serial_scale.flushInput()
         scale_data = serial_scale.readline().decode('utf-8').strip()
         print(f"{CYAN}Raw scale data: {scale_data}{RESET}")  # Imprimir os dados brutos
