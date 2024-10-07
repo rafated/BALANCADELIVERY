@@ -1,4 +1,3 @@
-#Código atualizado --28 Setembro de 2024 -- 16h24
 import requests
 import time
 import json
@@ -75,7 +74,10 @@ def teste_api_connection():
     print(GREEN + "Testando conexão à API" + RESET)
     try:
         # Adicionando um timeout de 3 segundos
-        response = requests.get(config.api_url, verify=False, timeout=1)
+        headers = {
+            'x-api-key': config.api_key  # Adicionando o cabeçalho da API Key
+        }
+        response = requests.get(config.api_url, verify=False, timeout=3, headers=headers)
         if response.status_code == 200:
             print(GREEN + "Conexão à API bem-sucedida" + RESET)
             config.set_api_online()
@@ -176,13 +178,15 @@ def main():
                         p = " ".join(word)
 #------------------------------------------BUSCA DE DADOS -------------------------------------------------------------------------  
                         api_connection = teste_api_connection()
-
+                        headers = {
+                            'x-api-key': config.api_key  # Adicionando o cabeçalho da API Key
+                        }
                         #CONEXÃO FEITA COM SUCESSO
                         if(config.api_offline == False):
                             url = config.api_url + "/produtos"
                             params = {"name": p}
 
-                            response = requests.get(url, params=params, verify=False)  # Verify False for development only
+                            response = requests.get(url, params=params, headers=headers, verify=False)  # Verify False for development only
 
                             if response.status_code == 200:
                                 resposta = response.json()
@@ -254,13 +258,15 @@ def main():
                                     p = " ".join(ing)
 #------------------------------------------BUSCA DE DADOS -------------------------------------------------------------------------      
                                 api_connection = teste_api_connection()
-
+                                headers = {
+                                    'x-api-key': config.api_key  # Adicionando o cabeçalho da API Key
+                                }
                                 #CONEXÃO FEITA COM SUCESSO
                                 if(api_connection == 1 and config.api_offline == False):
                                     url = config.api_url + "/ingredientes"
                                     params = {"name": p}
 
-                                    response = requests.get(url, params=params, verify=False)  # Verify False for development only
+                                    response = requests.get(url, params=params, headers=headers, verify=False)  # Verify False for development only
 
                                     if response.status_code == 200:
                                         resposta = response.json()
@@ -359,6 +365,9 @@ def main():
             codigo_restaurante = config.rest_code
             api_connection = teste_api_connection()
             #CONEXÃO FEITA COM SUCESSO
+            headers = {
+                'x-api-key': config.api_key  # Adicionando o cabeçalho da API Key
+            }
             if(api_connection == 1 and config.api_offline == False):
                 url = config.api_url + "/pick_list"
                 data = {      
@@ -370,7 +379,7 @@ def main():
                     "codigo_restaurante": codigo_restaurante,
                     "time_stamp": time_stamp
                 }
-                response = requests.post(url, json=data, verify=False)  # Verify False for development only
+                response = requests.post(url, json=data, headers=headers, verify=False)  # Verify False for development only
 
                 if response.status_code == 201:
                     print(GREEN + "Dados inseridos com sucesso" + RESET)
@@ -397,7 +406,7 @@ def main():
                         "file_name": file_name,
                         "estado": estadoinicial,
                         "pendente": pendente,
-                        "codigo_restaurante": codigo_restaurante,
+                        "codigo_restaurante": config.rest_code,
                         "time_stamp": time_stamp,
                     })
                     con.commit()
