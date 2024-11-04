@@ -29,6 +29,7 @@ pip install sqlite3
 pip install requests
 pip install opencv-python
 pip install pyserial
+pip install pyusb
 Hardware Suportado:
 Balança com interface serial (comunicação via porta COM).
 Impressora de etiquetas compatível com comandos ESC/POS.
