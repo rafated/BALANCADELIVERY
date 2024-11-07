@@ -15,7 +15,8 @@ import os
 from urllib3.exceptions import InsecureRequestWarning
 import usb.core
 import usb.util
-
+from pydub import AudioSegment
+from pydub.playback import play
 
 # Suprimir o aviso de request inseguro
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
@@ -28,6 +29,9 @@ CYAN = "\033[1;36m"
 
 # Find the device (replace with your device's vendor and product ID)
 printer = usb.core.find(idVendor=0x04b8, idProduct=0x0202)
+
+#definicao caminho som tarte
+tarte = AudioSegment.from_wav(config.sound_tarte)
 
 normal_size = b'\x1b\x21\x00'    # Normal size
 double_height = b'\x1b\x21\x10'  # Double height
@@ -53,6 +57,13 @@ last_order_number = 1
 verped_running = False
 funcpri = None
 verped_lock = threading.Lock()  # Adiciona um lock para controle de execução
+
+def play_tarte():
+    try:
+        play(tarte)
+    except:
+        print("Som tarte não encontrado")
+    
 
 def teste_api_connection():
     print(GREEN + "Testando conexão à API" + RESET)
@@ -635,6 +646,7 @@ def calculate_order_weight(window, order_json):
     if(found_tarte):
         #Muda a cor do campo das sobremesas alertando que há uma tarte no pedido
         window['-tarte-'].update('\n\n Atenção! \n O pedido leva tarte de maça!', background_color='blue', text_color='white')
+        play_tarte()
     # Mudar fundo do campo de sobremesas para azul se uma tarte de maçã for encontrada
 
     print(f"{CYAN}Calculated weight: {peso}, variancia: {variancia}{RESET}")
