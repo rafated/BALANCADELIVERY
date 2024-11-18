@@ -10,6 +10,7 @@ rest_code = 'Digite aqui o código do restaurante'
 api_offline = False
 dlv = False
 pending_order = False
+lado_botao = 'direito'
 
 data_base = prog_dir + '/Instance/db_picklist.db'
 
