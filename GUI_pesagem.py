@@ -482,12 +482,20 @@ def build_layout():
                   [sg.Text("Camera", size=(10, 1))],
                   [sg.Image(filename="", key="cam")]]
 
-    layout = [top_row,
-              [sg.Column(molhos_col, element_justification='c', vertical_alignment='t'),
-               sg.Column(left_col, element_justification='c', vertical_alignment='t'), sg.VSeperator(),
-               sg.Column(midle_col, element_justification='c', vertical_alignment='t'), sg.VSeperator(),
-               sg.Column(right_col, element_justification='c', vertical_alignment='t'),
-               sg.Column(order_col, element_justification='c', vertical_alignment='t')]]
+    if config.lado_botao == 'esquerdo':
+        layout = [top_row,
+                [sg.Column(order_col, element_justification='c', vertical_alignment='t'),
+                sg.Column(left_col, element_justification='c', vertical_alignment='t'), sg.VSeperator(),
+                sg.Column(midle_col, element_justification='c', vertical_alignment='t'), sg.VSeperator(),
+                sg.Column(right_col, element_justification='c', vertical_alignment='t'),
+                sg.Column(molhos_col, element_justification='c', vertical_alignment='t')]]
+    else:
+        layout = [top_row,
+                [sg.Column(molhos_col, element_justification='c', vertical_alignment='t'),
+                sg.Column(left_col, element_justification='c', vertical_alignment='t'), sg.VSeperator(),
+                sg.Column(midle_col, element_justification='c', vertical_alignment='t'), sg.VSeperator(),
+                sg.Column(right_col, element_justification='c', vertical_alignment='t'),
+                sg.Column(order_col, element_justification='c', vertical_alignment='t')]]
 
     print("Layout built")
     return layout
