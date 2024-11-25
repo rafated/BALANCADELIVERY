@@ -787,6 +787,7 @@ def process_weighing(window, serial_scale, estimated_weight, order_number, camer
     print(f"{CYAN}Processing weighing, estimated weight: {estimated_weight}{RESET}")
     weights = []
     image_file = None  # Variável para armazenar o caminho da imagem
+    lista_pesos_save=[]
 
     # Tentar ler os dados da balança por até 10 vezes
     for _ in range(5):
@@ -810,6 +811,9 @@ def process_weighing(window, serial_scale, estimated_weight, order_number, camer
         
         if len(weights) >= 3:
             break
+
+        lista_pesos_save.append(scale_data)  # guarda todos dados da balança num array  
+        
     weighing_try = 0
     if weights:
         actual_weight = weights[-1]  # Pega o último valor válido de peso
@@ -884,6 +888,17 @@ def process_weighing(window, serial_scale, estimated_weight, order_number, camer
             print(f"{CYAN}Peso instável ou 0{RESET}")
             window['-Peso_r-'].update("Instável")
             window['-Confirmar-'].update('\n Pedido instável ou a 0', background_color="gray60")
+
+    t = datetime.datetime.now()
+    s=t.strftime('%Y/%m/%d %H:%M:%S')
+
+    file_object = open(config.file_pesagem, 'a')
+    file_object.write('\n'+s+'; '+str(order_number)+'; '+str(estimated_weight)+'; '+str(weights))  # guarda a data num ficheiro txt
+
+    for peso_arr in lista_pesos_save:
+        file_object.write('; '+str(peso_arr))
+        
+    file_object.close() 
         
 def save_image(image_file, order_number):
     timestamp = datetime.datetime.now().strftime('%Y%m%d_%Hh%Mm%Ss')
