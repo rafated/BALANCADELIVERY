@@ -458,7 +458,7 @@ def build_layout():
                sg.Text(key='-Peso_r-', text='', size=(6, 1), font=("Arial CE", 22), text_color='Black')]]
 
     order_col = [[sg.Text('', size=(22, 1))],
-                 [sg.Column([create_button(0, 0, 1)], key='-ROW_PANEL-')]]
+                 [sg.Column([], key='-ROW_PANEL-')]]
 
     left_col = [[sg.Text('Molhos', font=("Arial Bold", 18))],
                 [sg.MLine(key='-ML1-' + sg.WRITE_ONLY_KEY, size=(26, 11), font=("Arial CE ", 16), text_color="black", background_color="lightgrey", no_scrollbar=True)],
