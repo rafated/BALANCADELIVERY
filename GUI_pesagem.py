@@ -28,7 +28,10 @@ RESET = "\033[0;0m"
 CYAN = "\033[1;36m"
 
 # Find the device (replace with your device's vendor and product ID)
-printer = usb.core.find(idVendor=0x04b8, idProduct=0x0202)
+try:
+    printer = usb.core.find(idVendor=0x04b8, idProduct=0x0202)
+except:
+    print("impressora não conectada")
 
 #definicao caminho som tarte
 tarte = AudioSegment.from_wav(config.sound_tarte)
