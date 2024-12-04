@@ -398,24 +398,26 @@ def clear_database_orders():
 
 
 # GUI Layout Functions
-def create_button(nr_pedido, row_counter, row_number_view):
+def create_button(nr_pedido, row_counter, row_number_view,molh):
     global last_order_number
     if(last_order_number  == nr_pedido):
         print(f"{RED}Botão duplicado detectado{RESET}")
+        button_text = f"{nr_pedido} \n ------------ \n {molh}"
         row = [sg.pin(
         sg.Col([[
             sg.Button("X", border_width=0, visible=False, key=('-DEL-', 0)),
-            sg.Button(nr_pedido, size=(18, 2), font=("Arial Bold", 18), key=('-DESC-', 0), visible= False),
+            sg.Button(button_text, size=(18, 2), font=("Arial Bold", 18), key=('-DESC-', 0), visible= False),
             sg.Text(f'{row_number_view}', key=('-STATUS-', row_counter), visible= False)
         ]], key=('-ROW-', 0)
         ))]
         row_number_view -= 1
     else:
         print(f"{CYAN}Creating button for pedido: {nr_pedido}, row_counter: {row_counter}, row_number_view: {row_number_view}{RESET}")
+        button_text = f"{nr_pedido} \n ------------ \n {molh}"
         row = [sg.pin(
             sg.Col([[
                 sg.Button("X", size=(2, 1),border_width=0, visible=True, key=('-DEL-', nr_pedido), button_color=("white", "red")),
-                sg.Button(nr_pedido, size=(18, 2), font=("Arial Bold", 18), key=('-DESC-', nr_pedido)),
+                sg.Button(button_text, size=(18, 2), font=("Arial Bold", 18), key=('-DESC-', nr_pedido)),
                 sg.Text(f'{row_number_view}', key=('-STATUS-', row_counter))
             ]], key=('-ROW-', nr_pedido)
         ))]
@@ -972,6 +974,22 @@ def verped(window, serial_scale, camera):
                 return  # Não continue se o formato estiver errado
 
             print(f"{CYAN}New order found: {nr_pedido}{RESET}")
+
+            molhos=[]
+            s2=0
+            
+            order_json2=json.loads(order['list'])
+
+            for item in order_json2:
+                if item["tipo"]=="Molho":
+                    s2=item["quantidade"]+" "+item["name"]
+                    molhos.append(s2)
+
+            if molhos == []:
+                molhos=["Sem molhos"]
+
+            molhos2='\n'.join(molhos)
+           
             
             # Verificurse o pedido já existe na interface
             existing_order_keys = [key for key in window.AllKeysDict if isinstance(key, tuple) and key[0] == '-ROW-' and key[1] == nr_pedido]
@@ -984,7 +1002,7 @@ def verped(window, serial_scale, camera):
             else:    
                 row_counter += 1
                 row_number_view += 1
-                window.extend_layout(window['-ROW_PANEL-'], [create_button(nr_pedido, row_counter, row_number_view)])
+                window.extend_layout(window['-ROW_PANEL-'], [create_button(nr_pedido, row_counter, row_number_view,molhos2)])
                 update_order_state(nr_pedido)
         else:
             print(f"{CYAN}Nenhum pedido pendente encontrado.{RESET}")
@@ -1031,6 +1049,21 @@ def reset_orders(window):
         nr_pedido = order['delivery_name']
 
         print(f"{CYAN}New order found: {nr_pedido}{RESET}")
+
+        molhos=[]
+        s2=0
+        
+        order_json2=json.loads(order['list'])
+
+        for item in order_json2:
+            if item["tipo"]=="Molho":
+                s2=item["quantidade"]+" "+item["name"]
+                molhos.append(s2)
+
+        if molhos == []:
+            molhos=["Sem molhos"]
+
+        molhos2='\n'.join(molhos)
         
         # Verificarse o pedido já existe na interface
         existing_order_keys = [key for key in window.AllKeysDict if isinstance(key, tuple) and key[0] == '-ROW-' and key[1] == nr_pedido]
@@ -1043,7 +1076,7 @@ def reset_orders(window):
         else:    
             row_counter += 1
             row_number_view += 1
-            window.extend_layout(window['-ROW_PANEL-'], [create_button(nr_pedido, row_counter, row_number_view)])
+            window.extend_layout(window['-ROW_PANEL-'], [create_button(nr_pedido, row_counter, row_number_view,molhos2)])
             update_order_state(nr_pedido)
 
 def handle_order(window, order_number, serial_scale, camera):
