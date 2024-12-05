@@ -406,7 +406,7 @@ def create_button(nr_pedido, row_counter, row_number_view,molh):
         row = [sg.pin(
         sg.Col([[
             sg.Button("X", border_width=0, visible=False, key=('-DEL-', 0)),
-            sg.Button(button_text, size=(18, 2), font=("Arial Bold", 18), key=('-DESC-', 0), visible= False),
+            sg.Button(button_text, size=(18, 6), font=("Arial Bold", 18), key=('-DESC-', 0), visible= False),
             sg.Text(f'{row_number_view}', key=('-STATUS-', row_counter), visible= False)
         ]], key=('-ROW-', 0)
         ))]
@@ -417,7 +417,7 @@ def create_button(nr_pedido, row_counter, row_number_view,molh):
         row = [sg.pin(
             sg.Col([[
                 sg.Button("X", size=(2, 1),border_width=0, visible=True, key=('-DEL-', nr_pedido), button_color=("white", "red")),
-                sg.Button(button_text, size=(18, 2), font=("Arial Bold", 18), key=('-DESC-', nr_pedido)),
+                sg.Button(button_text, size=(18, 6), font=("Arial Bold", 18), key=('-DESC-', nr_pedido)),
                 sg.Text(f'{row_number_view}', key=('-STATUS-', row_counter))
             ]], key=('-ROW-', nr_pedido)
         ))]
