@@ -965,25 +965,32 @@ def verped(window, serial_scale, camera):
         time.sleep(3)  # Simula o tempo de espera de um pedido
         order = fetch_last_order()
         if order:  # Verifique se order não é None e tem o formato esperado
+            molhos=[]
+            s2=0
+        
             if isinstance(order, list) and len(order) > 0 and isinstance(order[0], dict):  # Para o caso de DB local
                 nr_pedido = order[0]['delivery_name']
+                lista=json.loads(order[0]['list'])
+                print(type(lista))
+                for item in lista:
+                    if item.get("tipo")=="Molho":
+                        s2=item["quantidade"]+" "+item["name"]
+                        molhos.append(s2)
+                        print("molho1")
             elif isinstance(order, dict) and 'delivery_name' in order:  # Para o caso de API
                 nr_pedido = order['delivery_name']
+                lista=json.loads(order['list'])
+                for item in lista:
+                    if item.get("tipo")=="Molho":
+                        s2=item["quantidade"]+" "+item["name"]
+                        molhos.append(s2)
+                        print("molho2")
             else:
                 print(f"{RED}Formato inesperado de pedido: {order}{RESET}")
                 return  # Não continue se o formato estiver errado
 
             print(f"{CYAN}New order found: {nr_pedido}{RESET}")
 
-            molhos=[]
-            s2=0
-            
-            order_json2=json.loads(order['list'])
-
-            for item in order_json2:
-                if item["tipo"]=="Molho":
-                    s2=item["quantidade"]+" "+item["name"]
-                    molhos.append(s2)
 
             if molhos == []:
                 molhos=["Sem molhos"]
