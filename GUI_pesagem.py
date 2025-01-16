@@ -31,6 +31,7 @@ CYAN = "\033[1;36m"
 try:
     printer = usb.core.find(idVendor=0x04b8, idProduct=0x0202)
 except:
+    printer = None
     print("impressora não conectada")
 
 #definicao caminho som tarte
