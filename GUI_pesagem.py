@@ -1026,7 +1026,7 @@ def verped(window, serial_scale, camera):
         with verped_lock:
             verped_running = False
 
-def reset_orders(window):
+def reset_orders(window, serial_scale, camera):
     global row_counter, row_number_view, funcpri  # Declarar funcpri como variável global
 
     print(f"{CYAN}Resetting orders in the database and UI{RESET}")
@@ -1054,7 +1054,7 @@ def reset_orders(window):
     row_number_view = 1
     
     # Criar uma nova instância de SetInterval após cancelar a anterior
-    funcpri = SetInterval(0.5, lambda: verped(window, None, None))
+    funcpri = SetInterval(3, lambda: verped(window, serial_scale, camera))
     
     print("Checking for pending orders")
     order = fetch_last_order()
@@ -1190,7 +1190,7 @@ def main():
 
         if event == 'rs-ML':
             print(f"{CYAN}Resetting orders{RESET}")
-            reset_orders(window)
+            reset_orders(window, serial_scale, camera)
 
         if isinstance(event, tuple) and event[0] == '-DESC-':
             print(f"{CYAN}Handling order selection: {event[1]}{RESET}")
