@@ -215,8 +215,6 @@ def confirm_order_api(order_number):
         else:
             print(RED + "Erro ao abrir a base de dados" + RESET)
 
-import json  # Certifique-se de importar o módulo json
-
 def fetch_order_state(order_number):
     headers = {
         'x-api-key': config.api_key  # Adicionando o cabeçalho da API Key
@@ -528,8 +526,6 @@ class SetInterval:
     def cancel(self):
         self.stopEvent.set()
 
-# Main Logic Functions
-import json  # Certifique-se de importar o módulo json
 
 def process_order(window, order, serial_scale, camera, id):
     global row_counter, row_number_view
