@@ -1060,22 +1060,22 @@ def reset_orders(window, serial_scale, camera):
 
         print(f"{CYAN}New order found: {nr_pedido}{RESET}")
 
-        molhos=[]
-        s2=0
+        #molhos=[]
+        #s2=0
         
-        order_json2=json.loads(order['list'])
+        #order_json2=json.loads(order['list'])
 
-        for item in order_json2:
-            if item["tipo"]=="Molho":
-                s2=item["quantidade"]+" "+item["name"]
-                molhos.append(s2)
+        #for item in order_json2:
+        #    if item["tipo"]=="Molho":
+        #        s2=item["quantidade"]+" "+item["name"]
+        #        molhos.append(s2)
 
-        if molhos == []:
-            molhos=["Sem molhos"]
+        #if molhos == []:
+        #    molhos=["Sem molhos"]
 
-        molhos2='\n'.join(molhos)
+        #molhos2='\n'.join(molhos)
         
-        # Verificarse o pedido já existe na interface
+        # Verificar se o pedido já existe na interface
         existing_order_keys = [key for key in window.AllKeysDict if isinstance(key, tuple) and key[0] == '-ROW-' and key[1] == nr_pedido]
         
         if existing_order_keys:
@@ -1086,7 +1086,8 @@ def reset_orders(window, serial_scale, camera):
         else:    
             row_counter += 1
             row_number_view += 1
-            window.extend_layout(window['-ROW_PANEL-'], [create_button(nr_pedido, row_counter, row_number_view,molhos2)])
+            #window.extend_layout(window['-ROW_PANEL-'], [create_button(nr_pedido, row_counter, row_number_view,molhos2)])
+            window.extend_layout(window['-ROW_PANEL-'], [create_button(nr_pedido, row_counter, row_number_view)])
             update_order_state(nr_pedido)
 
 def handle_order(window, order_number, serial_scale, camera):
