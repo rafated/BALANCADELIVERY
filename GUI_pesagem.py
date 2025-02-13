@@ -1074,6 +1074,7 @@ def reset_orders(window, serial_scale, camera):
         #    molhos=["Sem molhos"]
 
         #molhos2='\n'.join(molhos)
+        molhos2=None
         
         # Verificar se o pedido já existe na interface
         existing_order_keys = [key for key in window.AllKeysDict if isinstance(key, tuple) and key[0] == '-ROW-' and key[1] == nr_pedido]
@@ -1087,7 +1088,7 @@ def reset_orders(window, serial_scale, camera):
             row_counter += 1
             row_number_view += 1
             #window.extend_layout(window['-ROW_PANEL-'], [create_button(nr_pedido, row_counter, row_number_view,molhos2)])
-            window.extend_layout(window['-ROW_PANEL-'], [create_button(nr_pedido, row_counter, row_number_view)])
+            window.extend_layout(window['-ROW_PANEL-'], [create_button(nr_pedido, row_counter, row_number_view,molhos2)])
             update_order_state(nr_pedido)
 
 def handle_order(window, order_number, serial_scale, camera):
