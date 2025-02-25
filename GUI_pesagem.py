@@ -749,7 +749,7 @@ def print_confirmation(order_number):
             printer.write(endpoint, fim_barra_preta)
             printer.write(endpoint, b' Pedido pesado e confirmado\n\n\n\n')
             printer.write(endpoint, b'electronicamente por um sistema\n\n\n\n')
-            printer.write(endpoint, b'de pesagem com balan\x87a e imagem.\n\n\n\n')
+            printer.write(endpoint, b'de pesagem com balan\x87a e fotografia.\n\n\n\n')
             
             # Numero do pedido
         
