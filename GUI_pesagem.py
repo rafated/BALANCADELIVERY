@@ -27,12 +27,6 @@ GREEN = "\033[0;32m"
 RESET = "\033[0;0m"
 CYAN = "\033[1;36m"
 
-# Find the device (replace with your device's vendor and product ID)
-try:
-    printer = usb.core.find(idVendor=0x04b8, idProduct=0x0202)
-except:
-    printer = None
-    print("impressora não conectada")
 
 #definicao caminho som tarte
 tarte = AudioSegment.from_wav(config.sound_tarte)
@@ -725,9 +719,9 @@ def get_string_time():
     return time_string
 
 def print_confirmation(order_number):
-    if printer is None:
-        print("Printer not found.")
-    else:
+    try:
+        printer = usb.core.find(idVendor=0x04b8, idProduct=0x0202)
+
         message = str(order_number)
         
         now = datetime.datetime.now()
@@ -776,6 +770,9 @@ def print_confirmation(order_number):
             
         except usb.core.USBError as e:
             print(f"Could not write to the printer: {e}")
+    except:
+        printer = None
+        print("impressora não conectada")
 
 def process_weighing(window, serial_scale, estimated_weight, order_number, camera, id, itens):
     global weighing_attempts
