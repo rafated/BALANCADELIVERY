@@ -27,7 +27,13 @@ GREEN = "\033[0;32m"
 RESET = "\033[0;0m"
 CYAN = "\033[1;36m"
 
+try:
+    printer = usb.core.find(idVendor=0x04b8, idProduct=0x0202)
 
+except Exception as e:
+    printer = None
+    print("Nao foi possivel conectar a impressora")
+    
 #definicao caminho som tarte
 tarte = AudioSegment.from_wav(config.sound_tarte)
 
@@ -719,56 +725,57 @@ def get_string_time():
     return time_string
 
 def print_confirmation(order_number):
-    try:
-        printer = usb.core.find(idVendor=0x04b8, idProduct=0x0202)
-
+    if printer is None:
+        print("Printer not found.")
+    else:
         message = str(order_number)
         
         now = datetime.datetime.now()
         dt_string = now.strftime("%d/%m/%Y %H:%M:%S")
         print("date and time =", dt_string)
         
-        # Typically endpoint 0x01 is used for output to the printer
-        endpoint = 1
-    
-        # Initialize the printer
-
-        printer.write(endpoint, b'\x1b\x32\x20')
-    
-        printer.write(endpoint, align_right)
-
-        printer.write(endpoint, barra_preta)
-        printer.write(endpoint, fim_barra_preta)
-        printer.write(endpoint, b' Pedido pesado e confirmado\n\n\n\n')
-        printer.write(endpoint, b'electronicamente por um sistema\n\n\n\n')
-        printer.write(endpoint, b'de pesagem com balan\x87a e fotografia.\n\n\n\n')
+        # Assuming the printer is already configured by Windows, try writing directly
+        try:
+            # Typically endpoint 0x01 is used for output to the printer
+            endpoint = 1
         
-        # Numero do pedido
+            # Initialize the printer
     
-        printer.write(endpoint, double_height_width)  # Large size
-        printer.write(endpoint, bold_on)
-        printer.write(endpoint, b'\x1dB\x01\x1bE\x01\n\n\n\n\n\n Pedido n\xA3mero:')
-        printer.write(endpoint, message.encode('utf-8'))
-        printer.write(endpoint, b'\x1d!\x00\x1bE\x00\x1d!\x00\x1dB\x00\n')
-        printer.write(endpoint, normal_size)  # Normal size
-        printer.write(endpoint, bold_off)
-
-        printer.write(endpoint, align_left)
-        printer.write(endpoint, b'\n\n\n\n\n\n\n Validado a: ')
-        printer.write(endpoint, dt_string.encode('utf-8'))
-        printer.write(endpoint, b'\n\n\n\n \n\n\n\n')
-        printer.write(endpoint, b'\n\n\n\n \n\n\n\n')
-        printer.write(endpoint, b'\n\n\n\n \n\n\n\n')
-
+            printer.write(endpoint, b'\x1b\x32\x20')
+        
+            printer.write(endpoint, align_right)
     
-        # Cut the paper
-        printer.write(endpoint, b'\x1d\x56\x01')
-
-        print("Talao impresso pedido", order_number)
+            printer.write(endpoint, barra_preta)
+            printer.write(endpoint, fim_barra_preta)
+            printer.write(endpoint, b' Pedido pesado e confirmado\n\n\n\n')
+            printer.write(endpoint, b'electronicamente por um sistema\n\n\n\n')
+            printer.write(endpoint, b'de pesagem com balan\x87a e fotografia.\n\n\n\n')
             
-    except usb.core.USBError as e:
-        printer = None
-        print("impressora não conectada")
+            # Numero do pedido
+        
+            printer.write(endpoint, double_height_width)  # Large size
+            printer.write(endpoint, bold_on)
+            printer.write(endpoint, b'\x1dB\x01\x1bE\x01\n\n\n\n\n\n Pedido n\xA3mero:')
+            printer.write(endpoint, message.encode('utf-8'))
+            printer.write(endpoint, b'\x1d!\x00\x1bE\x00\x1d!\x00\x1dB\x00\n')
+            printer.write(endpoint, normal_size)  # Normal size
+            printer.write(endpoint, bold_off)
+    
+            printer.write(endpoint, align_left)
+            printer.write(endpoint, b'\n\n\n\n\n\n\n Validado a: ')
+            printer.write(endpoint, dt_string.encode('utf-8'))
+            printer.write(endpoint, b'\n\n\n\n \n\n\n\n')
+            printer.write(endpoint, b'\n\n\n\n \n\n\n\n')
+            printer.write(endpoint, b'\n\n\n\n \n\n\n\n')
+    
+        
+            # Cut the paper
+            printer.write(endpoint, b'\x1d\x56\x01')
+
+            print("Talao impresso pedido", order_number)
+            
+        except usb.core.USBError as e:
+            print(f"Could not write to the printer: {e}")
 
 def process_weighing(window, serial_scale, estimated_weight, order_number, camera, id, itens):
     global weighing_attempts
