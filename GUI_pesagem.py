@@ -831,7 +831,7 @@ def process_weighing(window, serial_scale, estimated_weight, order_number, camer
         window['-Peso_r-'].update(str(actual_weight))
         
         # Se o desvio estiver dentro da faixa aceitável, o pedido deve ser confirmado
-        if -60 <= deviation <= 100:
+        if -60 <= deviation <= 80:
             if estimated_weight <= 10:
                 window['-Peso_r-'].update("n/a")
                 window['-Confirmar-'].update('\n Pedido não aplicável à balança', background_color="gray60")
