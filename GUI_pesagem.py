@@ -920,7 +920,7 @@ def update_confirmation_status(window, deviation):
     if deviation > 100 or deviation < -60:
         window['-Confirmar-'].update('\n Atenção, verificar novamente \n o pedido!', background_color='red', text_color = 'white')
         window['-Peso_d-'].update(str(deviation), background_color='red', text_color='black')
-        play(verificar)
+      
     else:
         window['-Confirmar-'].update('\n Pedido correcto. Pronto para entrega!', background_color='green', text_color = 'white')
         window['-Peso_d-'].update(str(deviation))
