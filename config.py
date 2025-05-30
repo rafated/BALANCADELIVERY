@@ -22,6 +22,7 @@ unknown_products_errors = prog_dir + '/Logs_and_errors/unknown_products_errors.t
 unknown_extras_errors = prog_dir + '/Logs_and_errors/extras_errors.txt'
 filtered_unknown_products_errors = prog_dir + '/Logs_and_errors/filtered_unknown_products_errors.txt'
 sound_tarte = prog_dir + '/Orders_Resources/tartes.wav'
+sound_verificar = prog_dir + '/Orders_Resources/verificar.wav'
 errors_log = prog_dir + '/Logs_and_errors/error_log.log'
 file_dir_pick_list = prog_dir +'/Orders_Resources/pick_list'
 file_dir_fatura = prog_dir + '/Orders_Resources/invoices'
