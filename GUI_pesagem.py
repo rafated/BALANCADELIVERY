@@ -622,7 +622,7 @@ def calculate_order_weight(window, order_json):
             if 'saco de transporte' in item["name"].lower():
                 peso += 14
                 found_bag = True
-                display_order_item(window, '-ML4-', item, "orange")
+                #display_order_item(window, '-ML4-', item, "orange")
             else:
                 display_order_item(window, '-ML4-', item)
             itens_count += 1 * int(item["quantidade"])
