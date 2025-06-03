@@ -721,59 +721,56 @@ def get_string_time():
 
 def print_confirmation(order_number):
     try:
-        printer = usb.core.find(idVendor=0x04b8, idProduct=0x0202) 
-        
+        printer = usb.core.find(idVendor=0x04b8, idProduct=0x0202)
+        if printer is None:
+            raise ValueError("Impressora não encontrada.")
+
+        # Set configuration and claim interface
+        printer.set_configuration()
+        usb.util.claim_interface(printer, 0)
+        endpoint = 1
+
         message = str(order_number)
         now = datetime.datetime.now()
         dt_string = now.strftime("%d/%m/%Y %H:%M:%S")
-        print("date and time =", dt_string)
-        
-        # Assuming the printer is already configured by Windows, try writing directly
+
+        # Your ESC/POS setup and printing code
+        printer.write(endpoint, b'\x1b\x32\x20')
+        printer.write(endpoint, align_right)
+        printer.write(endpoint, barra_preta)
+        printer.write(endpoint, fim_barra_preta)
+        printer.write(endpoint, b' Pedido pesado e confirmado\n\n\n\n')
+        printer.write(endpoint, b'electronicamente por um sistema\n\n\n\n')
+        printer.write(endpoint, b'de pesagem com balan\x87a e imagem.\n\n\n\n')
+
+        printer.write(endpoint, double_height_width)
+        printer.write(endpoint, bold_on)
+        printer.write(endpoint, b'\x1dB\x01\x1bE\x01\n\n\n\n\n\n Pedido n\xA3mero:')
+        printer.write(endpoint, message.encode('utf-8'))
+        printer.write(endpoint, b'\x1d!\x00\x1bE\x00\x1d!\x00\x1dB\x00\n')
+        printer.write(endpoint, normal_size)
+        printer.write(endpoint, bold_off)
+
+        printer.write(endpoint, align_left)
+        printer.write(endpoint, b'\n\n\n\n\n\n\n Validado a: ')
+        printer.write(endpoint, dt_string.encode('utf-8'))
+        printer.write(endpoint, b'\n\n\n\n \n\n\n\n')
+        printer.write(endpoint, b'\n\n\n\n \n\n\n\n')
+        printer.write(endpoint, b'\n\n\n\n \n\n\n\n')
+
+        printer.write(endpoint, b'\x1d\x56\x01')  # Cut paper
+
+        print("Talao impresso pedido", order_number)
+
+    except usb.core.USBError as e:
+        print(f"Erro USB: {e}")
+    except Exception as e:
+        print(f"Erro geral: {e}")
+    finally:
         try:
-            # Typically endpoint 0x01 is used for output to the printer
-            endpoint = 1
-        
-            # Initialize the printer
-    
-            printer.write(endpoint, b'\x1b\x32\x20')
-        
-            printer.write(endpoint, align_right)
-    
-            printer.write(endpoint, barra_preta)
-            printer.write(endpoint, fim_barra_preta)
-            printer.write(endpoint, b' Pedido pesado e confirmado\n\n\n\n')
-            printer.write(endpoint, b'electronicamente por um sistema\n\n\n\n')
-            printer.write(endpoint, b'de pesagem com balan\x87a e imagem.\n\n\n\n')
-            
-            # Numero do pedido
-        
-            printer.write(endpoint, double_height_width)  # Large size
-            printer.write(endpoint, bold_on)
-            printer.write(endpoint, b'\x1dB\x01\x1bE\x01\n\n\n\n\n\n Pedido n\xA3mero:')
-            printer.write(endpoint, message.encode('utf-8'))
-            printer.write(endpoint, b'\x1d!\x00\x1bE\x00\x1d!\x00\x1dB\x00\n')
-            printer.write(endpoint, normal_size)  # Normal size
-            printer.write(endpoint, bold_off)
-    
-            printer.write(endpoint, align_left)
-            printer.write(endpoint, b'\n\n\n\n\n\n\n Validado a: ')
-            printer.write(endpoint, dt_string.encode('utf-8'))
-            printer.write(endpoint, b'\n\n\n\n \n\n\n\n')
-            printer.write(endpoint, b'\n\n\n\n \n\n\n\n')
-            printer.write(endpoint, b'\n\n\n\n \n\n\n\n')
-    
-        
-            # Cut the paper
-            printer.write(endpoint, b'\x1d\x56\x01')
-
-            print("Talao impresso pedido", order_number)
-            
-        except usb.core.USBError as e:
-            print(f"Could not write to the printer: {e}")
-
-    except:
-        printer = None
-        print("impressora não conectada")
+            usb.util.release_interface(printer, 0)
+        except Exception:
+            pass
 
 def get_molhos_from_order(order_json):
     molhos = []
