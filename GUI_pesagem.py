@@ -755,8 +755,6 @@ def print_confirmation(order_number):
         printer.write(endpoint, b'\n\n\n\n\n\n\n Validado a: ')
         printer.write(endpoint, dt_string.encode('utf-8'))
         printer.write(endpoint, b'\n\n\n\n \n\n\n\n')
-        printer.write(endpoint, b'\n\n\n\n \n\n\n\n')
-        printer.write(endpoint, b'\n\n\n\n \n\n\n\n')
 
         printer.write(endpoint, b'\x1d\x56\x01')  # Cut paper
 
