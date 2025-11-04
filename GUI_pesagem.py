@@ -803,20 +803,20 @@ def process_weighing(window, serial_scale, estimated_weight, order_number, camer
 
     # Tentar ler os dados da balança por até 10 vezes
     serial_scale.reset_input_buffer()
-    for _ in range(5):
+    for _ in range(1):
         time.sleep(0.2)
         scale_data = serial_scale.readline().decode('utf-8').strip()
         print(f"{CYAN}Raw scale data: {scale_data}{RESET}")  # Imprimir os dados brutos
 
         try:
             # Verifica se o dado é do formato esperado e extrai o valor em kg
-            if scale_data.startswith('ST'):
+            #if scale_data.startswith('ST'):---------------------------------- eliminado para testar rapidez
                 # Extrai a parte do peso em kg (posição 7 até 14)
-                weight_kg = float(scale_data[7:14])
-                weight_grams = int(weight_kg * 1000)  # Converte para gramas
-                print(f"{CYAN}Processed weight: {weight_grams}{RESET}")  # Verifica o peso processado
-                if weight_grams > 0:
-                    weights.append(weight_grams)
+            weight_kg = float(scale_data[7:14])
+            weight_grams = int(weight_kg * 1000)  # Converte para gramas
+            print(f"{CYAN}Processed weight: {weight_grams}{RESET}")  # Verifica o peso processado
+            if weight_grams > 0:
+                weights.append(weight_grams)
         except ValueError as ve:
             print(f"{RED}ValueError: {ve}{RESET}")  # Mostrar o erro específico
             print(f"{RED}Invalid data received from scale.{RESET}")
@@ -1198,3 +1198,4 @@ if __name__ == "__main__":
         main()
     except Exception as e:
         log_error(e)
+
