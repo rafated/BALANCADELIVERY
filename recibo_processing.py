@@ -144,6 +144,10 @@ def main():
                 identifier = "PEDIDO"
             else:
                 identifier = "DRIVE"    
+
+            exclusoes = ["SEM SACO", "TAXA SACO", "TAXA DE ENTREGA", "TX PEDIDO PEQ"]
+            lines[:] = [line for line in lines if all(exc not in line.upper() for exc in exclusoes)] 
+            
             for word in lines:
                 if identifier in word:
                     if(config.dlv == True):
@@ -166,8 +170,6 @@ def main():
                             if word.isdigit():
                                 nr_pedido = int(word)
                     if word[0].isdigit():
-                        if " ".join(word[1:]).upper() in ["SEM SACO", "TAXA SACO"]:
-                            continue  # Ignorar essas linhas
                         PickList.append(pick_list())
                         PickList[product_index].quantidade = word[0]
                         word.pop(0)
@@ -436,3 +438,4 @@ def main():
  
 if __name__ == '__main__':
     main()
+
