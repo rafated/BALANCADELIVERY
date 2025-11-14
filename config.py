@@ -3,7 +3,7 @@ prog_dir ='Digite aqui o diretório onde está o progama'
 
 
 #portas Serial
-port_com_balanca = 'Colocar aqui a porta COM que da balaça' #porta balança
+port_com_balanca = 'Colocar aqui a porta COM da balança' #porta balança
 port_com_arduino = 'Colocar aqui a porta COM da impressora' #porta impressora
 
 rest_code = 'Digite aqui o código do restaurante'
@@ -11,6 +11,7 @@ api_offline = False
 dlv = False
 pending_order = False
 lado_botao = 'direito'
+printer_type_code = 0x0202 #ou 0x0e31 para as novas sticky
 
 data_base = prog_dir + '/Instance/db_picklist.db'
 
@@ -44,3 +45,4 @@ def set_pending_order_true():
 def set_pending_order_true():
     global pending_order
     pending_order = False      
+
