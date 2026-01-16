@@ -833,6 +833,7 @@ def process_weighing(window, serial_scale, estimated_weight, order_number, camer
         deviation = actual_weight - estimated_weight
         print(f"Actual weight: {actual_weight}, Deviation: {deviation}")
         window['-Peso_r-'].update(str(actual_weight))
+        confirm_order_api(order_number)  # Confirmar o pedido na API
         
         # Se o desvio estiver dentro da faixa aceitável, o pedido deve ser confirmado
         if -60 <= deviation <= 80:
@@ -844,7 +845,7 @@ def process_weighing(window, serial_scale, estimated_weight, order_number, camer
                 weighing_try += 1
                 print(f"{CYAN}Peso dentro da faixa aceitável. Confirmando pedido {order_number}.{RESET}")
                 update_confirmation_status(window, deviation)
-                confirm_order_api(order_number)  # Confirmar o pedido na API
+                
                 print_confirmation(order_number) #imprime ticket na impressora com dados
                 
                 # Enviar os dados de pesagem para a API
@@ -1198,5 +1199,6 @@ if __name__ == "__main__":
         main()
     except Exception as e:
         log_error(e)
+
 
 
