@@ -833,7 +833,7 @@ def process_weighing(window, serial_scale, estimated_weight, order_number, camer
         deviation = actual_weight - estimated_weight
         print(f"Actual weight: {actual_weight}, Deviation: {deviation}")
         window['-Peso_r-'].update(str(actual_weight))
-        confirm_order_api(order_number)  # Confirmar o pedido na API
+        
         
         # Se o desvio estiver dentro da faixa aceitável, o pedido deve ser confirmado
         if -60 <= deviation <= 80:
@@ -841,11 +841,13 @@ def process_weighing(window, serial_scale, estimated_weight, order_number, camer
                 window['-Peso_r-'].update("n/a")
                 window['-Confirmar-'].update('\n Pedido não aplicável à balança', background_color="gray60")
                 window[('-ROW-', order_number)].update(visible=False)
+                confirm_order_api(order_number)  # Confirmar o pedido na API
             else:
                 weighing_try += 1
                 print(f"{CYAN}Peso dentro da faixa aceitável. Confirmando pedido {order_number}.{RESET}")
                 update_confirmation_status(window, deviation)
                 print_confirmation(order_number) #imprime ticket na impressora com dados
+                confirm_order_api(order_number)  # Confirmar o pedido na API
                 
                 # Enviar os dados de pesagem para a API
                 send_weight_data_to_api(
@@ -865,6 +867,7 @@ def process_weighing(window, serial_scale, estimated_weight, order_number, camer
                 window['-Peso_r-'].update("n/a")
                 window['-Confirmar-'].update('\n Pedido não aplicável à balança', background_color="gray60")
                 window[('-ROW-', order_number)].update(visible=False)
+                confirm_order_api(order_number)  # Confirmar o pedido na API
 
             else:
                 weighing_try += 1
@@ -880,6 +883,7 @@ def process_weighing(window, serial_scale, estimated_weight, order_number, camer
                 if weighing_attempts[order_number] >= 2:
                     print(f"{CYAN}Pedido {order_number} removido após 2 tentativas falhadas.{RESET}")
                     window[('-ROW-', order_number)].update(visible=False)
+                    confirm_order_api(order_number)  # Confirmar o pedido na API
                     del weighing_attempts[order_number]  # Remover o pedido das tentativas
                     send_weight_data_to_api(
                         pick_list_id=order_id,  # Utiliza o id do pedido
@@ -896,6 +900,7 @@ def process_weighing(window, serial_scale, estimated_weight, order_number, camer
             window['-Peso_r-'].update("n/a")
             window['-Confirmar-'].update('\n Pedido não aplicável à balança', background_color="gray60")
             window[('-ROW-', order_number)].update(visible=False)
+            confirm_order_api(order_number)  # Confirmar o pedido na API
         else:
             print(f"{CYAN}Peso instável ou 0{RESET}")
             window['-Peso_r-'].update("Instável")
@@ -1198,6 +1203,7 @@ if __name__ == "__main__":
         main()
     except Exception as e:
         log_error(e)
+
 
 
 
