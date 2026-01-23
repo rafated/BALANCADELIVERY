@@ -723,8 +723,14 @@ def print_confirmation(order_number):
     try:
         printer = usb.core.find(idVendor=0x04b8, idProduct=0x0202)
         if printer is None:
+            try:
+                printer = usb.core.find(idVendor=0x04b8, idProduct=0x0e31)
+            except:    
+                raise ValueError("Impressora não encontrada.")
+            
+        if printer is None:
             raise ValueError("Impressora não encontrada.")
-
+            
         # Set configuration and claim interface
         printer.set_configuration()
         usb.util.claim_interface(printer, 0)
@@ -1203,6 +1209,7 @@ if __name__ == "__main__":
         main()
     except Exception as e:
         log_error(e)
+
 
 
 
