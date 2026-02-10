@@ -44,7 +44,7 @@ align_center = b'\x1b\x61\x01'   # Center align
 align_left = b'\x1b\x61\x00'     # Left align
 align_right = b'\x1b\x61\x02'    # Right align
 
-barra_preta = b'\x1b\x21\x30\x1dB\x01\x1bE\x01 Duplo Controle \n\n\n\n'
+barra_preta = b'\x1b\x21\x30\x1dB\x01\x1bE\x01 Duplo Controlo \n\n\n\n'
 fim_barra_preta = b'\x1d!\x00\x1bE\x00\x1d!\x00\x1dB\x00\n'
 
 # Define paper cut commands
@@ -1209,6 +1209,7 @@ if __name__ == "__main__":
         main()
     except Exception as e:
         log_error(e)
+
 
 
 
