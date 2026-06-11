@@ -144,16 +144,24 @@ def main():
                 identifier = "PEDIDO"
             else:
                 identifier = "DRIVE"    
-            for word in lines:
+                
+            ultima_posicao = None
+            
+            for array_posicao, word in enumerate(lines):
                 if identifier in word:
-                    if(config.dlv == True):
-                        codigo_delivery = lines[array_posicao + 1]
-                    else:
-                        codigo_delivery = lines[array_posicao + 1]
-                    linha_pedido = array_posicao
-                    array_str_pedido.append(array_posicao)
-                    break
-                array_posicao += 1
+                    ultima_posicao = array_posicao 
+            
+            if ultima_posicao is not None:
+                if ultima_posicao + 1 < len(lines):
+                    codigo_delivery = lines[ultima_posicao + 1]
+                else:
+                    codigo_delivery = "AVISO: Identificador no fim do ficheiro, sem linha seguinte"
+                    
+                linha_pedido = ultima_posicao
+                array_str_pedido.append(ultima_posicao)
+            else:
+                codigo_delivery = "AVISO: Identificador não encontrado no recibo"
+                
             print(codigo_delivery)
 #-------------------------------------------------------------------------------------------------------------------------------------    
             for i in range(array_str_pedido[0] - 1):
