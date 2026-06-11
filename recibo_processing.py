@@ -144,14 +144,10 @@ def main():
                 identifier = "PEDIDO"
             else:
                 identifier = "DRIVE"    
-
-            exclusoes = ["SEM SACO", "TAXA SACO", "TAXA DE ENTREGA", "TX PEDIDO PEQ"]
-            lines[:] = [line for line in lines if all(exc not in line.upper() for exc in exclusoes)] 
-            
             for word in lines:
                 if identifier in word:
                     if(config.dlv == True):
-                        codigo_delivery = lines[array_posicao + 1]
+                        codigo_delivery = lines[array_posicao + 2]
                     else:
                         codigo_delivery = lines[array_posicao + 1]
                     linha_pedido = array_posicao
@@ -170,6 +166,8 @@ def main():
                             if word.isdigit():
                                 nr_pedido = int(word)
                     if word[0].isdigit():
+                        if " ".join(word[1:]).upper() in ["SEM SACO", "TAXA SACO"]:
+                            continue  # Ignorar essas linhas
                         PickList.append(pick_list())
                         PickList[product_index].quantidade = word[0]
                         word.pop(0)
@@ -215,10 +213,10 @@ def main():
                         if (resposta):
                             if(config.api_offline == False):
                                 produto = resposta[0]
-                                PickList[product_index].name = produto.get('Produto_name', 'Desconhecido')
-                                PickList[product_index].peso = produto.get('Peso_total', 0)
-                                PickList[product_index].variancia = produto.get('Variancia', 0)
-                                PickList[product_index].peso_natura = produto.get('Peso_Natura', 0)
+                                PickList[product_index].name = produto.get('produto_name', 'Desconhecido')
+                                PickList[product_index].peso = produto.get('peso_total', 0)
+                                PickList[product_index].variancia = produto.get('variancia', 0)
+                                PickList[product_index].peso_natura = produto.get('peso_Natura', 0)
                                 PickList[product_index].tipo = produto.get('tipo', 'Desconhecido')
                             if(config.api_offline == True):
                                 PickList[product_index].name = resposta[0][1]
@@ -438,4 +436,3 @@ def main():
  
 if __name__ == '__main__':
     main()
-
