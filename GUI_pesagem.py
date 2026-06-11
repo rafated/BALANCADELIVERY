@@ -27,6 +27,12 @@ GREEN = "\033[0;32m"
 RESET = "\033[0;0m"
 CYAN = "\033[1;36m"
 
+try:
+    printer = usb.core.find(idVendor=0x04b8, idProduct=0x0202)
+
+except Exception as e:
+    printer = None
+    print("Nao foi possivel conectar a impressora")
     
 #definicao caminho som tarte
 tarte = AudioSegment.from_wav(config.sound_tarte)
@@ -44,7 +50,7 @@ align_center = b'\x1b\x61\x01'   # Center align
 align_left = b'\x1b\x61\x00'     # Left align
 align_right = b'\x1b\x61\x02'    # Right align
 
-barra_preta = b'\x1b\x21\x30\x1dB\x01\x1bE\x01 Duplo Controlo \n\n\n\n'
+barra_preta = b'\x1b\x21\x30\x1dB\x01\x1bE\x01 Duplo Controle \n\n\n\n'
 fim_barra_preta = b'\x1d!\x00\x1bE\x00\x1d!\x00\x1dB\x00\n'
 
 # Define paper cut commands
@@ -66,6 +72,11 @@ def play_tarte():
     except:
         print("Som tarte não encontrado")
     
+def play_verificar():
+    try:
+        play(verificar)
+    except:
+        print("Som tarte não encontrado")
 
 def teste_api_connection():
     print(GREEN + "Testando conexão à API" + RESET)
@@ -316,12 +327,12 @@ def fetch_order_details(order_number):
                         "id": order[0] if len(order) > 0 and order[0] is not None else None,
                         "delivery_name": order[1] if len(order) > 1 and order[1] is not None else '',
                         "list": list_data,  # Usa a lista processada
-                        "pick_list_file": order[2] if len(order) > 7 and order[7] is not None else '',
-                        "state": order[3] if len(order) > 8 and order[8] is not None else 0,
-                        "confirmado": order[4] if len(order) > 9 and order[9] is not None else 0,
-                        "pendente": order[5] if len(order) > 10 and order[10] is not None else 0,
-                        "codigo_restaurante": order[6] if len(order) > 11 and order[11] is not None else None,
-                        "time_stamp": order[7] if len(order) > 12 and order[12] is not None else ''
+                        "pick_list_file": order[3] if len(order) > 7 and order[7] is not None else '',
+                        "state": order[4] if len(order) > 8 and order[8] is not None else 0,
+                        "confirmado": order[5] if len(order) > 9 and order[9] is not None else 0,
+                        "pendente": order[6] if len(order) > 10 and order[10] is not None else 0,
+                        "codigo_restaurante": order[7] if len(order) > 11 and order[11] is not None else None,
+                        "time_stamp": order[8] if len(order) > 12 and order[12] is not None else ''
                     }
                     print(f"{GREEN}Order details fetched and standardized from DB: {order_json}{RESET}")
                     return order_json  # Retorna o dicionário estruturado
@@ -616,7 +627,7 @@ def calculate_order_weight(window, order_json):
             if 'saco de transporte' in item["name"].lower():
                 peso += 14
                 found_bag = True
-                #display_order_item(window, '-ML4-', item, "orange")
+                display_order_item(window, '-ML4-', item, "orange")
             else:
                 display_order_item(window, '-ML4-', item)
             itens_count += 1 * int(item["quantidade"])
@@ -635,22 +646,7 @@ def calculate_order_weight(window, order_json):
 
 
 #-----------------ALTERAR INEFICIENTE------------------------------------
-    if (found_molho == True):
-        if(found_ketchup == True):
-            found_both = True
-    if (found_ketchup == True):
-        if(found_molho == True):
-            found_both = True
-    
-    if(found_both == True):
-        window['-molho-'].update('\n\n Atenção! \n O Pedido leva molho e ketchup!', background_color='#E78200', text_color='white')
-        found_molho = False
-        found_ketchup = False
-    if(found_molho == True):
-        window['-molho-'].update('\n\n Atenção! \n O Pedido leva molho!', background_color='orange', text_color='white')
-    if(found_ketchup == True):
-        window['-molho-'].update('\n\n Atenção! \n O Pedido leva ketchup!', background_color='red', text_color='white')
-    
+
     if(found_tarte):
         #Muda a cor do campo das sobremesas alertando que há uma tarte no pedido
         window['-tarte-'].update('\n\n Atenção! \n O pedido leva tarte de maça!', background_color='blue', text_color='white')
@@ -676,9 +672,9 @@ def capture_image(camera, order_number, window):
     frameSize = (400, 260)
 
     try:
-        cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)  # Abre o objeto da câmera
+
         
-        ret, frame = cap.read()  # Captura um frame da câmera
+        ret, frame = camera.read()  # Captura um frame da câmera
 
         if ret:  # Verifica se a captura foi bem-sucedida
             # Construção do nome do arquivo para salvar a imagem
@@ -693,17 +689,17 @@ def capture_image(camera, order_number, window):
             imgbytes = cv2.imencode(".png", frame2)[1].tobytes()
             window["cam"].update(data=imgbytes)  # Atualiza a imagem no campo "cam"
             
-            cap.release()  # Libera o objeto da câmera após a captura
+
             return filename  # Retorna o caminho do arquivo salvo
 
         else:
             print(f'{RED}Frame not opened{RESET}')
-            cap.release()
+
             return None  # Retorna None se a captura falhar
 
     except Exception as e:
         print(f'{RED}Erro ao acessar a webcam{RESET}')
-        cap.release()
+        camera.release()
         # Log do erro
         logf = open("Erro_Log.log", "a")
         t = datetime.datetime.now()
@@ -720,72 +716,57 @@ def get_string_time():
     return time_string
 
 def print_confirmation(order_number):
-    try:
-        printer = usb.core.find(idVendor=0x04b8, idProduct=0x0202)
-        if printer is None:
-            try:
-                printer = usb.core.find(idVendor=0x04b8, idProduct=0x0e31)
-            except:    
-                raise ValueError("Impressora não encontrada.")
-            
-        if printer is None:
-            raise ValueError("Impressora não encontrada.")
-            
-        # Set configuration and claim interface
-        printer.set_configuration()
-        usb.util.claim_interface(printer, 0)
-        endpoint = 1
-
+    if printer is None:
+        print("Printer not found.")
+    else:
         message = str(order_number)
+        
         now = datetime.datetime.now()
         dt_string = now.strftime("%d/%m/%Y %H:%M:%S")
-
-        # Your ESC/POS setup and printing code
-        printer.write(endpoint, b'\x1b\x32\x20')
-        printer.write(endpoint, align_right)
-        printer.write(endpoint, barra_preta)
-        printer.write(endpoint, fim_barra_preta)
-        printer.write(endpoint, b' Pedido pesado e confirmado\n\n\n\n')
-        printer.write(endpoint, b'electronicamente por um sistema\n\n\n\n')
-        printer.write(endpoint, b'de pesagem com balan\x87a e imagem.\n\n\n\n')
-
-        printer.write(endpoint, double_height_width)
-        printer.write(endpoint, bold_on)
-        printer.write(endpoint, b'\x1dB\x01\x1bE\x01\n\n\n\n\n\n Pedido n\xA3mero:')
-        printer.write(endpoint, message.encode('utf-8'))
-        printer.write(endpoint, b'\x1d!\x00\x1bE\x00\x1d!\x00\x1dB\x00\n')
-        printer.write(endpoint, normal_size)
-        printer.write(endpoint, bold_off)
-
-        printer.write(endpoint, align_left)
-        printer.write(endpoint, b'\n\n\n\n\n\n\n Validado a: ')
-        printer.write(endpoint, dt_string.encode('utf-8'))
-        printer.write(endpoint, b'\n\n\n\n \n\n\n\n')
-
-        printer.write(endpoint, b'\x1d\x56\x01')  # Cut paper
-
-        print("Talao impresso pedido", order_number)
-
-    except usb.core.USBError as e:
-        print(f"Erro USB: {e}")
-    except Exception as e:
-        print(f"Erro geral: {e}")
-    finally:
+        print("date and time =", dt_string)
+        
+        # Assuming the printer is already configured by Windows, try writing directly
         try:
-            usb.util.release_interface(printer, 0)
-        except Exception:
-            pass
-
-def get_molhos_from_order(order_json):
-    molhos = []
-    for item in order_json:
-        if item["tipo"] == "Molho":
-            s2 = item["quantidade"] + " " + item["name"]
-            molhos.append(s2)
-    if not molhos:  # Verifica se a lista está vazia
-        return "Sem molhos"
-    return '\n'.join(molhos)
+            # Typically endpoint 0x01 is used for output to the printer
+            endpoint = 1
+        
+            # Initialize the printer
     
+            printer.write(endpoint, b'\x1b\x32\x20')
+        
+            printer.write(endpoint, align_right)
+    
+            printer.write(endpoint, barra_preta)
+            printer.write(endpoint, fim_barra_preta)
+            printer.write(endpoint, b' Pedido pesado e confirmado\n\n\n\n')
+            printer.write(endpoint, b'electronicamente por um sistema\n\n\n\n')
+            printer.write(endpoint, b'de pesagem com balan\x87a e fotografia.\n\n\n\n')
+            
+            # Numero do pedido
+        
+            printer.write(endpoint, double_height_width)  # Large size
+            printer.write(endpoint, bold_on)
+            printer.write(endpoint, b'\x1dB\x01\x1bE\x01\n\n\n\n\n\n Pedido n\xA3mero:')
+            printer.write(endpoint, message.encode('utf-8'))
+            printer.write(endpoint, b'\x1d!\x00\x1bE\x00\x1d!\x00\x1dB\x00\n')
+            printer.write(endpoint, normal_size)  # Normal size
+            printer.write(endpoint, bold_off)
+    
+            printer.write(endpoint, align_left)
+            printer.write(endpoint, b'\n\n\n\n\n\n\n Validado a: ')
+            printer.write(endpoint, dt_string.encode('utf-8'))
+            printer.write(endpoint, b'\n\n\n\n \n\n\n\n')
+            printer.write(endpoint, b'\n\n\n\n \n\n\n\n')
+            printer.write(endpoint, b'\n\n\n\n \n\n\n\n')
+    
+        
+            # Cut the paper
+            printer.write(endpoint, b'\x1d\x56\x01')
+
+            print("Talao impresso pedido", order_number)
+            
+        except usb.core.USBError as e:
+            print(f"Could not write to the printer: {e}")
 
 def process_weighing(window, serial_scale, estimated_weight, order_number, camera, id, itens):
     global weighing_attempts
@@ -809,20 +790,20 @@ def process_weighing(window, serial_scale, estimated_weight, order_number, camer
 
     # Tentar ler os dados da balança por até 10 vezes
     serial_scale.reset_input_buffer()
-    for _ in range(2):
-        time.sleep(0.1)
+    for _ in range(5):
+        time.sleep(0.2)
         scale_data = serial_scale.readline().decode('utf-8').strip()
         print(f"{CYAN}Raw scale data: {scale_data}{RESET}")  # Imprimir os dados brutos
 
         try:
             # Verifica se o dado é do formato esperado e extrai o valor em kg
-            #if scale_data.startswith('ST'):---------------------------------- eliminado para testar rapidez
+            if scale_data.startswith('ST'):
                 # Extrai a parte do peso em kg (posição 7 até 14)
-            weight_kg = float(scale_data[7:14])
-            weight_grams = int(weight_kg * 1000)  # Converte para gramas
-            print(f"{CYAN}Processed weight: {weight_grams}{RESET}")  # Verifica o peso processado
-            if weight_grams > 0:
-                weights.append(weight_grams)
+                weight_kg = float(scale_data[7:14])
+                weight_grams = int(weight_kg * 1000)  # Converte para gramas
+                print(f"{CYAN}Processed weight: {weight_grams}{RESET}")  # Verifica o peso processado
+                if weight_grams > 0:
+                    weights.append(weight_grams)
         except ValueError as ve:
             print(f"{RED}ValueError: {ve}{RESET}")  # Mostrar o erro específico
             print(f"{RED}Invalid data received from scale.{RESET}")
@@ -840,20 +821,18 @@ def process_weighing(window, serial_scale, estimated_weight, order_number, camer
         print(f"Actual weight: {actual_weight}, Deviation: {deviation}")
         window['-Peso_r-'].update(str(actual_weight))
         
-        
         # Se o desvio estiver dentro da faixa aceitável, o pedido deve ser confirmado
         if -60 <= deviation <= 80:
             if estimated_weight <= 10:
                 window['-Peso_r-'].update("n/a")
                 window['-Confirmar-'].update('\n Pedido não aplicável à balança', background_color="gray60")
                 window[('-ROW-', order_number)].update(visible=False)
-                confirm_order_api(order_number)  # Confirmar o pedido na API
             else:
                 weighing_try += 1
                 print(f"{CYAN}Peso dentro da faixa aceitável. Confirmando pedido {order_number}.{RESET}")
                 update_confirmation_status(window, deviation)
-                print_confirmation(order_number) #imprime ticket na impressora com dados
                 confirm_order_api(order_number)  # Confirmar o pedido na API
+                print_confirmation(order_number) #imprime ticket na impressora com dados
                 
                 # Enviar os dados de pesagem para a API
                 send_weight_data_to_api(
@@ -873,7 +852,6 @@ def process_weighing(window, serial_scale, estimated_weight, order_number, camer
                 window['-Peso_r-'].update("n/a")
                 window['-Confirmar-'].update('\n Pedido não aplicável à balança', background_color="gray60")
                 window[('-ROW-', order_number)].update(visible=False)
-                confirm_order_api(order_number)  # Confirmar o pedido na API
 
             else:
                 weighing_try += 1
@@ -889,7 +867,6 @@ def process_weighing(window, serial_scale, estimated_weight, order_number, camer
                 if weighing_attempts[order_number] >= 2:
                     print(f"{CYAN}Pedido {order_number} removido após 2 tentativas falhadas.{RESET}")
                     window[('-ROW-', order_number)].update(visible=False)
-                    confirm_order_api(order_number)  # Confirmar o pedido na API
                     del weighing_attempts[order_number]  # Remover o pedido das tentativas
                     send_weight_data_to_api(
                         pick_list_id=order_id,  # Utiliza o id do pedido
@@ -906,7 +883,6 @@ def process_weighing(window, serial_scale, estimated_weight, order_number, camer
             window['-Peso_r-'].update("n/a")
             window['-Confirmar-'].update('\n Pedido não aplicável à balança', background_color="gray60")
             window[('-ROW-', order_number)].update(visible=False)
-            confirm_order_api(order_number)  # Confirmar o pedido na API
         else:
             print(f"{CYAN}Peso instável ou 0{RESET}")
             window['-Peso_r-'].update("Instável")
@@ -934,7 +910,7 @@ def update_confirmation_status(window, deviation):
     if deviation > 100 or deviation < -60:
         window['-Confirmar-'].update('\n Atenção, verificar novamente \n o pedido!', background_color='red', text_color = 'white')
         window['-Peso_d-'].update(str(deviation), background_color='red', text_color='black')
-      
+        play_verificar()
     else:
         window['-Confirmar-'].update('\n Pedido correcto. Pronto para entrega!', background_color='green', text_color = 'white')
         window['-Peso_d-'].update(str(deviation))
@@ -1010,8 +986,11 @@ def verped(window, serial_scale, camera):
 
             print(f"{CYAN}New order found: {nr_pedido}{RESET}")
 
-            order_json = json.loads(order['list'])
-            molhos_text = get_molhos_from_order(order_json)
+
+            if molhos == []:
+                molhos=["Sem molhos"]
+
+            molhos2='\n'.join(molhos)
            
             
             # Verificurse o pedido já existe na interface
@@ -1025,7 +1004,7 @@ def verped(window, serial_scale, camera):
             else:    
                 row_counter += 1
                 row_number_view += 1
-                window.extend_layout(window['-ROW_PANEL-'], [create_button(nr_pedido, row_counter, row_number_view,molhos_text)])
+                window.extend_layout(window['-ROW_PANEL-'], [create_button(nr_pedido, row_counter, row_number_view,molhos2)])
                 update_order_state(nr_pedido)
         else:
             print(f"{CYAN}Nenhum pedido pendente encontrado.{RESET}")
@@ -1073,10 +1052,21 @@ def reset_orders(window, serial_scale, camera):
 
         print(f"{CYAN}New order found: {nr_pedido}{RESET}")
 
+        #molhos=[]
+        #s2=0
+        
+        #order_json2=json.loads(order['list'])
 
+        #for item in order_json2:
+        #    if item["tipo"]=="Molho":
+        #        s2=item["quantidade"]+" "+item["name"]
+        #        molhos.append(s2)
 
-        order_json2 = json.loads(order['list'])
-        molhos_text = get_molhos_from_order(order_json2)
+        #if molhos == []:
+        #    molhos=["Sem molhos"]
+
+        #molhos2='\n'.join(molhos)
+        molhos2=None
         
         # Verificar se o pedido já existe na interface
         existing_order_keys = [key for key in window.AllKeysDict if isinstance(key, tuple) and key[0] == '-ROW-' and key[1] == nr_pedido]
@@ -1090,7 +1080,7 @@ def reset_orders(window, serial_scale, camera):
             row_counter += 1
             row_number_view += 1
             #window.extend_layout(window['-ROW_PANEL-'], [create_button(nr_pedido, row_counter, row_number_view,molhos2)])
-            window.extend_layout(window['-ROW_PANEL-'], [create_button(nr_pedido, row_counter, row_number_view,molhos_text)])
+            window.extend_layout(window['-ROW_PANEL-'], [create_button(nr_pedido, row_counter, row_number_view,molhos2)])
             update_order_state(nr_pedido)
 
 def handle_order(window, order_number, serial_scale, camera):
@@ -1202,6 +1192,8 @@ def main():
             continue  # Continua o loop com a nova janela
 
     # Fechar a janela ao sair do loop
+    camera.release()
+    serial_scale.close()
     window.close()
 
 if __name__ == "__main__":
@@ -1209,11 +1201,3 @@ if __name__ == "__main__":
         main()
     except Exception as e:
         log_error(e)
-
-
-
-
-
-
-
-
