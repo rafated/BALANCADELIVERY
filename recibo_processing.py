@@ -147,7 +147,7 @@ def main():
             for word in lines:
                 if identifier in word:
                     if(config.dlv == True):
-                        codigo_delivery = lines[array_posicao + 2]
+                        codigo_delivery = lines[array_posicao + 1]
                     else:
                         codigo_delivery = lines[array_posicao + 1]
                     linha_pedido = array_posicao
